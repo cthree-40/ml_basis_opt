@@ -1,11 +1,13 @@
 program compute_rms_density
   
+  ! compute_rms_density.x [qc file] [fgh file] [npoints]
+
   implicit none
 
   double precision, dimension(:), allocatable :: qcden, fghden
-  integer, parameter :: npts = 64
+  integer :: npts
   
-  character(255)     :: qcden_file, fghden_file
+  character(255)     :: qcden_file, fghden_file, cmdstr
   integer, parameter :: qcden_unit = 10, fghden_unit = 11
   
   double precision :: rms_error
@@ -22,6 +24,13 @@ program compute_rms_density
   if (ios .ne. 0) then
       print *, "WARNING: No file name provided. Assuming fhf_dens.fgh.data"
       write(fghden_file, "(A)") "fhf_dens.fgh.data"
+  end if
+  call get_command_argument(number=3, value=cmdstr, status=ios)
+  if (ios .ne. 0) then
+      print *, "WARNING: No point number provided. Assuming 64 points."
+      npts = 64
+  else
+      read(cmdstr, "(I3)") npts
   end if
   
   ! Get density information

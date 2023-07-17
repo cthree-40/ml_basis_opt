@@ -1,8 +1,14 @@
-program cubedata_into_xz_training_data
+program cubedata_into_training_data
+  
+  ! cubedata_into_training_data.x [cube file name] [jobtype]
+  ! jobtype = 1 : x
+  !         = 2 : x and z
+  !         = 3 : x and z and y
   
   implicit none
   
   double precision, dimension(:,:), allocatable :: xdens
+  double precision, dimension(:,:), allocatable :: ydens
   double precision, dimension(:,:), allocatable :: zdens
   
   double precision, dimension(:,:,:), allocatable :: cubedata
@@ -12,17 +18,25 @@ program cubedata_into_xz_training_data
   integer, dimension(3) :: ndisps
   double precision, dimension(3) :: disp_size, start 
   
-  character(255) :: cubefile_name
+  character(255) :: cubefile_name, jobtype_name
   integer :: ios
-  integer :: i
+  integer :: i, jobtype
   
-  ! Process command line argument
+  ! Process command line arguments
   call get_command_argument(number=1, value=cubefile_name, status=ios)
   if (ios /= 0) then
       print *, "WARNING: No file name provided. Assuming den_p_0.cube"
       write(cubefile_name, "(A)") "den_p_0.cube"
   end if
-  
+  call get_command_argument(number=2, value=jobtype_name, status=ios)
+  if (ios .ne. 0) then
+      print *, "WARNING: No jobtype selected. Assuming print of x, y, and z."
+      jobtype = 3
+  else      
+      read(jobtype_name, "(I3)") jobtype
+  end if
+
+
   call read_cubefile_header(cubefile_name, cube_dim, ndisps, disp_size, start)
   
   allocate(cubedata(ndisps(1), ndisps(2), ndisps(3)))
@@ -32,23 +46,41 @@ program cubedata_into_xz_training_data
   call read_cubefile_cubedata(cubefile_name, cubedata, ndisps(1))
   
   allocate(xdens(2, ndisps(1)))
+  allocate(ydens(2, ndisps(2)))
   allocate(zdens(2, ndisps(3)))
   call generate_densdata(cubedata, 1, start(1), ndisps(1), disp_size(1), xdens)
+  call generate_densdata(cubedata, 2, start(2), ndisps(2), disp_size(2), ydens)
   call generate_densdata(cubedata, 3, start(3), ndisps(3), disp_size(3), zdens)
-
-  ! Print x density
-  !print *, "=== x-axis Density (bohr / a.u.) ==="
-  do i = 1, ndisps(1)
-      print "(F20.5,F20.8)", xdens(1,i), xdens(2,i)
-  end do
-
-  ! Print z density
-  !print *, "=== z-axis Density (bohr / a.u.) ==="
-  do i = 1, ndisps(3)
-      print "(F20.5,F20.8)", zdens(1,i), zdens(2,i)
-  end do
   
-  !print *, ""
+  if (jobtype .eq. 1) then
+      ! Print x density only
+      do i = 2, ndisps(1)
+          print "(F20.5,F20.8)", xdens(1,i), xdens(2,i)
+      end do
+  else if (jobtype .eq. 2) then
+      ! Print x and z densities
+      do i = 2, ndisps(1)
+          print "(F20.5,F20.8)", xdens(1,i), xdens(2,i)
+      end do
+      do i = 2, ndisps(1)
+          print "(F20.5,F20.8)", zdens(1,i), zdens(2,i)
+      end do
+
+  else if (jobtype .eq. 3) then
+      ! Print x and z and y densities
+      do i = 2, ndisps(1)
+          print "(F20.5,F20.8)", xdens(1,i), xdens(2,i)
+      end do
+      do i = 2, ndisps(1)
+          print "(F20.5,F20.8)", ydens(1,i), ydens(2,i)
+      end do
+      do i = 2, ndisps(1)
+          print "(F20.5,F20.8)", zdens(1,i), zdens(2,i)
+      end do
+
+  else
+      stop "*** Error: Invalid Job Type! ***"
+  end if
 
 contains
   
@@ -155,4 +187,4 @@ contains
     
   end subroutine read_cubefile_header
 
-end program
+end program cubedata_into_training_data
