@@ -5,6 +5,16 @@ import subprocess
 import shlex
 import numpy as np
 
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import Matern, RBF, WhiteKernel,\
+	ConstantKernel as C,\
+	RationalQuadratic as RQ,\
+	ExpSineSquared as ESS,\
+	DotProduct as DP
+from sklearn.metrics import mean_squared_error as mse 
+
+from scipy.optimize import minimize, rosen, rosen_der,shgo, differential_evolution,basinhopping
+
 
 #---------------------------------------------------------------------
 # GLOBAL PARAMETERS UNIQUE TO THIS PROGRAM
@@ -13,9 +23,17 @@ import numpy as np
 # program.
 PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/nn_basis_opt/"
 
-# Systems used to train model. [Name, # of density pts]
-MOLEC_SYS = [["hcn", 64], ["h2o", 96], ["hehhe", 64]]
+# Systems used to train model. [Name, # of density pts, cubedata jobtype]
+MOLEC_SYS = [["hcn", 64, 2], ["hehhe", 64, 2]]
 
+# Number of parameters being optimized
+NUM_PARAM = 2
+
+# Initial training data set size
+INIT_DATA_SIZE = 30
+
+# Number of OMP Threads
+NTHREADS = os.getenv("OMP_NUM_THREADS")
 #---------------------------------------------------------------------
 
 
@@ -35,6 +53,19 @@ def command_line(command):
     print (output)
     return output
     
+#
+# create_nbox_files: Create the nbox_data.txt and nbox_npts.txt files the
+# given molecule
+# Input:
+#  molec = System  
+#
+def create_nbox_files(molec):
+    cmdl_arg = "cp "+molec+".nbox_npts.txt nbox_npts.txt"
+    command_line(cmdl_arg)
+    cmdl_arg = "cp "+molec+".nbox_data.txt nbox_data.txt"
+    command_line(cmdl_arg)
+
+
 #
 # create_qchem_file: Create a qchem input file
 # Input:
@@ -80,9 +111,21 @@ def generate_initial_dataset(init_data_size, num_param, run):
     # Initialize the values in var_ij. Get set of random values
     # for parameters. Valid values for the parameters occur within
     # bounds.
-    v1 = np.random.uniform(25.0, 50.0, size=(init_data_size))
-    v2 = np.random.uniform(0.01, 24.9, size=(init_data_size))
-    var = np.vstack((v1,v2)).T
+    var = np.ndarray(shape=(init_data_size, num_param), dtype=float)
+    upper_bound = 50.0
+    bound_range = upper_bound / float(num_param)
+    lower_bound = upper_bound - bound_range
+    print("Generating training set with bounds: ")
+    for i in range(num_param):
+        print("("+str(lower_bound)+", "+str(upper_bound)+"), ")
+        var[:,i] = np.random.uniform(lower_bound, upper_bound, size=(init_data_size))
+        # Update lower and upper bounds
+        upper_bound = lower_bound - 0.01
+        lower_bound = lower_bound - bound_range
+        if (i == num_param - 1):
+            lower_bound = 0.01 # Make last lower bound
+    print("\n")
+    sys.stdout.flush()
 
     rmse_val = []
     for i in range(init_data_size):
@@ -124,7 +167,7 @@ def objective_function_value(var):
     
     # Compute QChem job with values and extract densities
     for i in range(len(MOLEC_SYS)):
-        qchem_job(var, MOLEC_SYS[i][0])
+        qchem_job(var, MOLEC_SYS[i][0], MOLEC_SYS[i][2])
         
     # Compute RMSE value for each system
     rmse_prog = PROGRAM_HOME+"/bin/compute_rmse_density.x"
@@ -132,11 +175,11 @@ def objective_function_value(var):
     for i in range(len(MOLEC_SYS)):
         # Name of system and number of points. Stored as local variables for convenience
         name = MOLEC_SYS[i][0]
-        npts = MOELC_SYS[i][1]
+        npts = MOLEC_SYS[i][1]
 
-        command_line(rmse_prog+" "+name+"_dens.data "+name+"_dens.fgh.data "+npts+" > "+name".rmse")
+        command_line(rmse_prog+" "+name+"_dens.data "+name+"_dens.fgh.data "+str(npts)+" > "+name+".rmse")
         rmse_file = open(name+".rmse", "r")
-        rmse.append(rmse_file.read())
+        rmse.append(float(rmse_file.read()))
         rmse_file.close()
 
     # Compute RMSE value
@@ -153,13 +196,17 @@ def objective_function_value(var):
 # Input:
 #  var = basis set parameters
 #  molec = moelcule to run Qchem for
-def qchem_job(var, molec):
+#  cjobtype = cubedata_into*x jobetype (1=x, 2=x+z, 3=xyz)
+def qchem_job(var, molec, cjobtype):
     # Create the input file and run QChem. Then extract the
     # density information, and print to file '*_dens.data'
     create_qchem_file(molec, var)
-    command_line('''qchem -nt 24 '''+molec+'''.input > '''+molec+'''.output''')
-    cdxz_prog = PROGRAM_HOME+"/bin/cubedata_into_xz_training_data.x"
-    command_line(cdxz_prog+''' den_p_0.cube > '''+molec+'''_dens.data''')    
+    create_nbox_files(molec)
+    command_line("qchem -nt "+str(NTHREADS)+" "+molec+".input > "+molec+".output")
+    cdxz_prog = PROGRAM_HOME+"/bin/cubedata_into_training_data.x"
+    command_line(cdxz_prog+" den_p_0.cube "+str(cjobtype)+" > "+molec+"_dens.data")    
+    # Save logs
+    command_line("cat "+molec+".output >> qc."+molec+".log")
 
 #
 # Main Program
@@ -173,12 +220,8 @@ def qchem_job(var, molec):
 if __name__ == "__main__":
     
 
-    # Parameters
-    num_param = 2
-    init_data_size = 20
-
     # Generate initial data set
-    generate_initial_dataset(init_data_size, num_param, False)
+    generate_initial_dataset(INIT_DATA_SIZE, NUM_PARAM, True)
 
     
     
