@@ -52,6 +52,9 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/nn_ba
 #BUILD_TRAINING_SET = True
 #BUILD_TRANING_SET_ONLY = True
 
+# Run GPR fit?
+# RUN_GPR = True 
+
 # Initial training data set size
 #INIT_DATA_SIZE = 30
 
@@ -471,6 +474,9 @@ if __name__ == "__main__":
     generate_testing_dataset(TEST_DATA_SIZE, NUM_PARAM)
     if (BUILD_TESTING_SET_ONLY):
         print("Finished building testing set input. Exiting...")
+        exit
+    
+    if not (RUN_GPR):
         exit
 
     # Fit GP model and obtain optimized parameters from these results.

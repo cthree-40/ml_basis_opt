@@ -11,7 +11,7 @@ export OMP_SCHEDULE=dynamic
 export OMP_PROC_BIND=true
 export OMP_PLACES=threads
 
-export NN_DIR="/home/clm96/pi_project/software/basis_opt/malbon_optimizer/nn_basis_opt"
+export NN_DIR="/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_basis_opt"
 export NN_SDIR="$NN_DIR/source"
 
 # Load anaconda environment
