@@ -11,6 +11,9 @@ export OMP_SCHEDULE=dynamic
 export OMP_PROC_BIND=true
 export OMP_PLACES=threads
 
+export NN_DIR="/home/clm96/pi_project/software/basis_opt/malbon_optimizer/nn_basis_opt"
+export NN_SDIR="$NN_DIR/source"
+
 # Load anaconda environment
 module load miniconda
 
@@ -31,4 +34,11 @@ echo " "
 # Load optimization environment
 conda activate qi_opt
 
-python3 /home/clm96/pi_project/software/basis_opt/malbon_optimizer/nn_basis_opt/source/basis_optimization.s_shell.py
+# Look for input file (This is required for proper code function.)
+if [ -f "basis_opt.input" ]; then
+    sed '/### GLOBAL VAR FROM INPUT ###/ r basis_opt.input' $NN_SDIR/basis_optimization.s_shell.py > ./basis_optimization.s_shell.py 
+    python3 ./basis_optimization.s_shell.py
+else
+    echo "Input file not found!"
+    echo "Please create an input file to continue."
+fi

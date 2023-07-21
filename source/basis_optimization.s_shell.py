@@ -24,25 +24,43 @@ from scipy.optimize import minimize, rosen, rosen_der,shgo, differential_evoluti
 # program.
 PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/nn_basis_opt/"
 
+#
+# To make this program a bit easier to use, and to not have to multiple copies
+# the code is designed to use with a shell scrip that will create the proper
+# code using sed.
+# From and input file, the variables are printed below.
+#
+### GLOBAL VAR FROM INPUT ###
+
+
+# 
+# Default parameters commented out below.
+#
+
 # Systems used to train model. [Name, # of density pts, cubedata jobtype]
-MOLEC_SYS = [["hcn", 64, 2], ["hehhe", 64, 2]]
+#MOLEC_SYS = [["hcn", 64, 2], ["hehhe", 64, 2]]
 
 # Number of parameters being optimized
-NUM_PARAM = 2
+#NUM_PARAM = 2
+
+# Orbital type
+#ORBITAL_TYPE = "S"
 
 # Build training data set
 # True  = Evaluate F(x) for every set of x and build training.dat file
 # False = Create input files for every set of x, but do not evaluate
-BUILD_TRAINING_SET = True
+#BUILD_TRAINING_SET = True
+#BUILD_TRANING_SET_ONLY = True
 
 # Initial training data set size
-INIT_DATA_SIZE = 30
+#INIT_DATA_SIZE = 30
 
 # Build testing data set
-BUILD_TESTING_SET = True
+#BUILD_TESTING_SET = True
+#BUILD_TESTING_SET_ONLY = True
 
 # Size of testing data set
-TEST_DATA_SIZE = 3
+#TEST_DATA_SIZE = 3
 
 # Number of OMP Threads
 NTHREADS = os.getenv("OMP_NUM_THREADS")
@@ -97,7 +115,7 @@ def create_qchem_file(molec, var):
     
     input_file.write("$neo_basis\nH    3\n")
     for i in range(len(var)):
-        input_file.write("S   1   1.0\n")
+        input_file.write(str(ORBITAL_TYPE)+"   1   1.0\n")
         input_file.write(" %.5f   1.0000D+00\n" % var[i])
     input_file.write("****\n$end")
 
@@ -128,7 +146,7 @@ def generate_initial_dataset(init_data_size, num_param, run):
     # for parameters. Valid values for the parameters occur within
     # bounds.
     var = np.ndarray(shape=(init_data_size, num_param), dtype=float)
-    bnds = get_param_bounds(num_param, 50.0, 0.0)
+    bnds = get_param_bounds(num_param, 50.0, 0.001)
     print("Generating training set with bounds: ")
     for i in range(num_param):
         hi = bnds[i][1]
@@ -182,7 +200,7 @@ def generate_testing_dataset(test_data_size, num_param):
     # for parameters. Valid values for the parameters occur within
     # bounds.
     var = np.ndarray(shape=(test_data_size, num_param), dtype=float)
-    bnds = get_param_bounds(num_param, 50.0, 0.0)
+    bnds = get_param_bounds(num_param, 50.0, 0.001)
     print("Generating testing data set with bounds: ")
     for i in range(num_param):
         hi = bnds[i][1]
@@ -291,16 +309,19 @@ def objective_function_value(var):
 def get_param_bounds(num_param, hi, lo):
     # Compute bound range. Loop over each parameter computing the
     # bounds for each and adding to array.
-    upper_bound = hi
-    bound_range = upper_bound / float(num_param)
-    lower_bound = upper_bound - bound_range
+    #upper_bound = hi
+    #bound_range = upper_bound / float(num_param)
+    #lower_bound = upper_bound - bound_range
+    #bnds = []
+    #for i in range(num_param):
+    #    bnds.append((lower_bound, upper_bound))
+    #    upper_bound = upper_bound - bound_range - 0.01
+    #    lower_bound = upper_bound - 2.0 * bound_range
+    #    if (i == (num_param - 2)):
+    #        lower_bound = lo
     bnds = []
     for i in range(num_param):
-        bnds.append((lower_bound, upper_bound))
-        upper_bound = upper_bound - bound_range - 0.01
-        lower_bound = upper_bound - 2.0 * bound_range
-        if (i == (num_param - 2)):
-            lower_bound = 0.01
+        bnds.append((lo, hi))
 
     return bnds
 
@@ -412,12 +433,12 @@ def train_gp_and_return_opt(var, result):
     for j in range(1):
         
         # Get lower/upper bounds for each parameter
-        bnds = get_param_bounds(NUM_PARAM, 50.0, 0.0)
+        bnds = get_param_bounds(NUM_PARAM, 50.0, 0.001)
 
         minimizer = {"method": "SLSQP", "args":gp,"bounds":bnds}
-        res = basinhopping(gp_objfcn,X[10*(j),:],minimizer_kwargs=minimizer,niter=1000)
+        res = basinhopping(gp_objfcn,X[10*(j),:],minimizer_kwargs=minimizer,niter=2000)
         for i in range(NUM_PARAM):
-            var[2*j+i] = res.x[i]
+            var[NUM_PARAM*j+i] = res.x[i]
             #X[0,i] = np.divide(1,res.x[i])
             X[0,i] = res.x[i]
             out, sigma = gp_prediction(gp,X[0,:])
@@ -442,17 +463,23 @@ if __name__ == "__main__":
 
     # Generate initial data set
     generate_initial_dataset(INIT_DATA_SIZE, NUM_PARAM, BUILD_TRAINING_SET)
+    if (BUILD_TRAINING_SET_ONLY and not BUILD_TESTING_SET_ONLY):
+        print("Finished building training set input. Exiting...")
+        exit
 
     # Generate test data set
     generate_testing_dataset(TEST_DATA_SIZE, NUM_PARAM)
-    
+    if (BUILD_TESTING_SET_ONLY):
+        print("Finished building testing set input. Exiting...")
+        exit
+
     # Fit GP model and obtain optimized parameters from these results.
     var = [0.0] * NUM_PARAM
     result = [0.0] * 1
     train_gp_and_return_opt(var, result)
 
     # Check if RMSE is acceptable
-    while (result[0] > 0.0001):
+    while (abs(result[0]) > 0.0001):
         # Update training and test data sets
         f_training = "training.dat"
         f_testing  = "testing.dat"
