@@ -22,7 +22,7 @@ for (my $i = 0; $i <= $#molec_sys; $i++) {
 
 my $rmse_val = 0.0;
 # Compute RMSE for each system
-for (my $i = 0; $i < $#molec_sys; $i++) {
+for (my $i = 0; $i <= $#molec_sys; $i++) {
 
     # Enter directory
     chdir "$molec_sys[$i][0]";
