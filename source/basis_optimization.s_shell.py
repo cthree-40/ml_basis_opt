@@ -18,7 +18,7 @@ from scipy.optimize import minimize, rosen, rosen_der,shgo, differential_evoluti
 
 
 #---------------------------------------------------------------------
-# GLOBAL PARAMETERS UNIQUE TO THIS PROGRAM
+
 
 # This is the directory containing source/ and bin/ and utilities/ for this
 # program.
@@ -37,6 +37,17 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/nn_ba
 # Default parameters commented out below.
 #
 
+# Jobtype for program execution
+#  gen_training: Generate training input files for batch submission
+#  gen_testing:  Generate testing input files for batch submission
+#  run_gpr:      Run GPR
+#  all:          Do all three
+# JOBTYPE = run_gpr
+
+# Random seeds
+# TRAIN_RSEED = 100001
+# TEST_RSEED  = 200001
+
 # Systems used to train model. [Name, # of density pts, cubedata jobtype]
 #MOLEC_SYS = [["hcn", 64, 2], ["hehhe", 64, 2]]
 
@@ -50,17 +61,12 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/nn_ba
 # True  = Evaluate F(x) for every set of x and build training.dat file
 # False = Create input files for every set of x, but do not evaluate
 #BUILD_TRAINING_SET = True
-#BUILD_TRANING_SET_ONLY = True
-
-# Run GPR fit?
-# RUN_GPR = True 
 
 # Initial training data set size
 #INIT_DATA_SIZE = 30
 
 # Build testing data set
 #BUILD_TESTING_SET = True
-#BUILD_TESTING_SET_ONLY = True
 
 # Size of testing data set
 #TEST_DATA_SIZE = 3
@@ -120,7 +126,7 @@ def create_qchem_file(molec, var):
     for i in range(len(var)):
         input_file.write(str(ORBITAL_TYPE)+"   1   1.0\n")
         input_file.write(" %.5f   1.0000D+00\n" % var[i])
-    input_file.write("****\n$end")
+    input_file.write("****\n$end\n")
 
     input_file.close()
 
@@ -142,7 +148,7 @@ def generate_initial_dataset(init_data_size, num_param, run):
         return
 
     # We need random numbers.
-    random.seed(100001)
+    random.seed(TRAIN_RSEED)
     
 
     # Initialize the values in var_ij. Get set of random values
@@ -166,6 +172,8 @@ def generate_initial_dataset(init_data_size, num_param, run):
         if (run):
             rmse_val.append(objective_function_value(var[i]))
         else:
+            # save var[i] info
+            save_var_to_indexed_file(var[i], i)
             for j in range(len(MOLEC_SYS)):
                 create_qchem_file(MOLEC_SYS[j][0], var[i])
                 command_line("cp "+MOLEC_SYS[j][0]+".input "+MOLEC_SYS[j][0]+".input."+str(i))
@@ -197,7 +205,7 @@ def generate_testing_dataset(test_data_size, num_param):
         return
 
     # We need random numbers. (Different seed from training data set)
-    random.seed(200001)
+    random.seed(TEST_RSEED)
 
     # Initialize the values in var_ij. Get set of random values
     # for parameters. Valid values for the parameters occur within
@@ -348,6 +356,20 @@ def qchem_job(var, molec, cjobtype):
     command_line("cat "+molec+".output >> qc."+molec+".log")
 
 #
+# save_var_to_indexed_file: Save the current coefficients to a file.
+# This routine is used for processing inputs that were submitted as batch jobs
+# and not computed during program execution.
+# Input:
+#  var = parameters
+#    i = file index
+#
+def save_var_to_indexed_file(var, i):
+    f = open("var."+str(i), "w")
+    for j in range(NUM_PARAM):
+        f.write(" %.5f\n" % var[j])
+    f.close()
+
+#
 # train_gp_and_return_opt: Train the GP model and return optimized parameters and
 # GP results.
 # Output:
@@ -465,43 +487,40 @@ if __name__ == "__main__":
     
 
     # Generate initial data set
-    generate_initial_dataset(INIT_DATA_SIZE, NUM_PARAM, BUILD_TRAINING_SET)
-    if (BUILD_TRAINING_SET_ONLY and not BUILD_TESTING_SET_ONLY):
-        print("Finished building training set input. Exiting...")
-        exit
-
+    if (JOBTYPE == "gen_training" or JOBTYPE == "all"):
+        generate_initial_dataset(INIT_DATA_SIZE, NUM_PARAM, BUILD_TRAINING_SET)
+        
+        
     # Generate test data set
-    generate_testing_dataset(TEST_DATA_SIZE, NUM_PARAM)
-    if (BUILD_TESTING_SET_ONLY):
-        print("Finished building testing set input. Exiting...")
-        exit
+    if (JOBTYPE == "gen_testing" or JOBTYPE == "all" or JOBTYPE == "run_gpr"):
+        generate_testing_dataset(TEST_DATA_SIZE, NUM_PARAM)
     
-    if not (RUN_GPR):
-        exit
 
     # Fit GP model and obtain optimized parameters from these results.
-    var = [0.0] * NUM_PARAM
-    result = [0.0] * 1
-    train_gp_and_return_opt(var, result)
-
-    # Check if RMSE is acceptable
-    while (abs(result[0]) > 0.0001):
-        # Update training and test data sets
-        f_training = "training.dat"
-        f_testing  = "testing.dat"
-        X = np.loadtxt(f_training, usecols=range(NUM_PARAM))
-        Y = np.loadtxt(f_training, usecols=(NUM_PARAM,))
-        n_points_data, n_parameters_data = X.shape
-        for i in range(1):
-            # Add new parameters and results
-            a = np.array([var])
-            X = np.concatenate((X, a), axis=0)
-            b = np.array([result[0]])
-            Y = np.concatenate((Y, b), axis=0)
-        data = np.column_stack((X,Y))
-        np.savetxt(f_training, data, fmt=" %10.5f %10.5f %15.8f")
-        np.savetxt(f_testing,  data, fmt=" %10.5f %10.5f %15.8f")
+    if (JOBTYPE == "run_gpr" or JOBTYPE == "all"):
+        var = [0.0] * NUM_PARAM
+        result = [0.0] * 1
         train_gp_and_return_opt(var, result)
-    print(var, result[0])
+
+        # Check if RMSE is acceptable
+        while (abs(result[0]) > 0.0001):
+            # Update training and test data sets
+            f_training = "training.dat"
+            f_testing  = "testing.dat"
+            X = np.loadtxt(f_training, usecols=range(NUM_PARAM))
+            Y = np.loadtxt(f_training, usecols=(NUM_PARAM,))
+            n_points_data, n_parameters_data = X.shape
+            for i in range(1):
+                # Add new parameters and results
+                a = np.array([var])
+                X = np.concatenate((X, a), axis=0)
+                b = np.array([result[0]])
+                Y = np.concatenate((Y, b), axis=0)
+                data = np.column_stack((X,Y))
+                np.savetxt(f_training, data, fmt=" %10.5f %10.5f %15.8f")
+                np.savetxt(f_testing,  data, fmt=" %10.5f %10.5f %15.8f")
+                train_gp_and_return_opt(var, result)
+            print(var, result[0])
+
     
     
