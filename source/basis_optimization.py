@@ -145,11 +145,11 @@ def generate_initial_dataset(init_data_size, num_param, run):
     
     # See if training file exists, if it does return.
     if os.path.isfile("training.dat"):
+        print("Training data file found! Aborting...\n")
         return
 
     # We need random numbers.
-    random.seed(TRAIN_RSEED)
-    
+    np.random.seed(TRAIN_RSEED)
 
     # Initialize the values in var_ij. Get set of random values
     # for parameters. Valid values for the parameters occur within
@@ -205,7 +205,7 @@ def generate_testing_dataset(test_data_size, num_param):
         return
 
     # We need random numbers. (Different seed from training data set)
-    random.seed(TEST_RSEED)
+    np.random.seed(TEST_RSEED)
 
     # Initialize the values in var_ij. Get set of random values
     # for parameters. Valid values for the parameters occur within

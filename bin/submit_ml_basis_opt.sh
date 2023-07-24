@@ -37,7 +37,7 @@ conda activate qi_opt
 # Look for input file (This is required for proper code function.)
 if [ -f "basis_opt.input" ]; then
     sed '/### GLOBAL VAR FROM INPUT ###/ r basis_opt.input' $ML_SDIR/basis_optimization.py > ./basis_optimization.py 
-    python3 ./basis_optimization.s_shell.py
+    python3 ./basis_optimization.py
 else
     echo "Input file not found!"
     echo "Please create an input file to continue."
