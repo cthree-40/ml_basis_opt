@@ -1,3 +1,4 @@
+import math
 import random
 import os
 import sys
@@ -22,7 +23,7 @@ from scipy.optimize import minimize, rosen, rosen_der,shgo, differential_evoluti
 
 # This is the directory containing source/ and bin/ and utilities/ for this
 # program.
-PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/nn_basis_opt/"
+PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_basis_opt"
 
 #
 # To make this program a bit easier to use, and to not have to multiple copies
@@ -48,14 +49,15 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/nn_ba
 # TRAIN_RSEED = 100001
 # TEST_RSEED  = 200001
 
-# Systems used to train model. [Name, # of density pts, cubedata jobtype]
-#MOLEC_SYS = [["hcn", 64, 2], ["hehhe", 64, 2]]
+# Systems used to train model. 
+#  [Name, # of density pts, cubedata jobtype, # states]
+#MOLEC_SYS = [["hcn", 64, 2, 1], ["hehhe", 64, 2, 1]]
 
 # Number of parameters being optimized
 #NUM_PARAM = 2
 
 # Orbital type
-#ORBITAL_TYPE = "S"
+#ORBITAL_TYPE = ["S","S"]
 
 # Build training data set
 # True  = Evaluate F(x) for every set of x and build training.dat file
@@ -124,7 +126,7 @@ def create_qchem_file(molec, var):
     
     input_file.write("$neo_basis\nH    3\n")
     for i in range(len(var)):
-        input_file.write(str(ORBITAL_TYPE)+"   1   1.0\n")
+        input_file.write(str(ORBITAL_TYPE[i])+"   1   1.0\n")
         input_file.write(" %.5f   1.0000D+00\n" % var[i])
     input_file.write("****\n$end\n")
 
@@ -230,8 +232,9 @@ def generate_testing_dataset(test_data_size, num_param):
     # Process and save data
     testing_data_file = open("testing.dat", "w")
     for i in range(test_data_size):
-        testing_data_file.write(" %10.5f" % var[i][0])
-        testing_data_file.write(" %10.5f" % var[i][1])
+        for j in range(num_param):
+            testing_data_file.write(" %10.5f" % var[i][j])
+            
         testing_data_file.write(" %15.8f\n" % rmse_val[i])
     testing_data_file.close()
 
@@ -272,7 +275,23 @@ def kernel_user():
 
     
 #
-# objective_function_value: Compute the value of the objective
+# objective_function_value: Compute the objective function for the parameters
+#
+def objective_function_value(var):
+
+    # Compute QChem job with values and extract densities and states
+    for i in range(len(MOLEC_SYS)):
+        qchem_job(var, MOLEC_SYS[i][0], MOLEC_SYS[i][2], MOLEC_SYS[i][3])
+
+    val = 0.0
+    val = val + objective_function_value_density(var)
+    val = val + objective_function_value_excited_states(var)
+    val = val + objective_function_value_zeropoint(var)
+
+    return val
+
+#
+# objective_function_value_density: Compute the density component of the objective
 # function for the parameters.
 #
 # Info: This objective function calls program to compute RMSE between
@@ -282,12 +301,8 @@ def kernel_user():
 #  var    = parameters
 # Output:
 #  val = f(x,y,...,z)
-def objective_function_value(var):
+def objective_function_value_density(var):
     
-    # Compute QChem job with values and extract densities
-    for i in range(len(MOLEC_SYS)):
-        qchem_job(var, MOLEC_SYS[i][0], MOLEC_SYS[i][2])
-        
     # Compute RMSE value for each system
     rmse_prog = PROGRAM_HOME+"/bin/compute_rmse_density.x"
     rmse = []
@@ -308,6 +323,151 @@ def objective_function_value(var):
 
     return val
     
+#
+# objective_function_value_excited_states: Compute the excited stats component of the
+# objective funciton.
+#
+# Info: This objective function calls programs to compute RMSE between QChem and
+# FGH energies.
+#
+# Input:
+#  var  = parameters
+# output:
+#  RMSE for excited states
+#
+def objective_function_value_excited_states(var):
+    
+    # Compute RMSE value for each system
+    rmse = []
+    for i in range(len(MOLEC_SYS)):
+        # Name of system and number of states.
+        name = MOLEC_SYS[i][0]
+        nsts = MOLEC_SYS[i][3]
+        nxst = nsts - 1
+        
+        # Read in excited states (in eV)
+        xstates = get_excited_states_from_file(name+"_states.data", nxst)
+        # Read in reference excited states (in eV)
+        ref_xst = get_excited_states_from_file(name+"_states.fgh.data", nxst)
+
+        # Compute RMSE
+        val = 0.0
+        for i in range(nxst):
+            
+            diff = xstates[i] - ref_xst[i]
+            
+            val = val + diff * diff
+
+        val = val / float(nxst)
+        val = math.sqrt(val)
+        rmse.append(val)
+        
+    # Sum errors
+    rmse_val = 0.0
+    for i in range(len(MOLEC_SYS)):
+        rmse_val = rmse_val + rmse[i]
+
+    return rmse_val
+
+#
+# objective_function_value_zeropoint: Compute the RMSE for zero point 
+# energy.
+# Input:
+#  var = parameter values
+# Output:
+#  RMSE for zero point energy
+#
+def objective_function_value_zeropoint(var):
+    
+    rmse = []
+    # Compute RMSE value fo each system
+    for i in range(len(MOLEC_SYS)):
+        
+        # Name of system
+        name = MOLEC_SYS[i][0]
+        
+        # Read in ground states (in au)
+        e0_qch = get_ground_states_from_file(name+"_states.data")
+        # Read in reference ground states (in au)
+        e0_ref = get_ground_states_from_file(name+"_states.fgh.data")
+
+        # Compute RMSE
+        val = e0_qch - e0_ref
+        val = val * val
+        val = math.sqrt(val)
+        rmse.append(val)
+        
+    # Sum errors
+    rmse_val = 0.0
+    for i in range(len(MOLEC_SYS)):
+        rmse_val = rmse_val + rmse[i]
+
+    return rmse_val
+
+#
+# get_excited_states_from_file: Get excited state energies from
+# a file. Convert these energies to eV
+# Input:
+#  flname = File name containing state information
+#  nsts   = Number of excited states
+# Output:
+#  xstates = Excited states
+#
+def get_excited_states_from_file(flname, nsts):
+    
+    xstates = []
+
+    if os.path.isfile(flname):
+        
+        efile = open(flname, "r")
+        ef_lines = (efile.read().splitlines())
+        efile.close()
+
+        nlines = len(ef_lines)
+        # Ensure we have all states required
+        if (nlines <= nsst):
+            print("Missing excited state information.")
+            sys.exit("Error message")
+            
+
+        for i in range(1, nlines):
+            xstates.append(float(ef_lines[i]))
+        
+        # Convert to eV
+        for i in range(len(xstates)):
+            xstates[i] = (xstates[i] - float(ef_lines[0]))*27.211399
+            
+    else:
+        
+        print("Could not find energy file! "+flname)
+        sys.exit("Error message")
+    
+    return xstates
+
+#
+# get_ground_state_from_file: Get ground state energies from a file.
+# Input:
+#  flname = File name containing state information
+# Output:
+#  e0 = Ground state energy
+#
+def get_ground_state_from_file(flname):
+    
+    if os.path.isfile(flname):
+        
+        efile = open(flname, "r")
+        ef_lines = (efile.read().splitlines())
+        efile.close()
+
+        e0 = ef_lines[0]
+
+    else:
+        
+        print("Could not find energy file! "+flname)
+        sys.exit("Error message")
+    
+    return e0
+
 #
 # get_param_bounds: Get lower and upper bounds for each parameter.
 # Input:
@@ -338,23 +498,52 @@ def get_param_bounds(num_param, hi, lo):
 
 #
 # qchem_job: Compute a QChem job with basis set parameters given by
-# input. Return the density. 
+# input. 
+#
+# This function also handles processing file for density / excited states
+#
 # Input:
 #  var = basis set parameters
 #  molec = moelcule to run Qchem for
 #  cjobtype = cubedata_into*x jobetype (1=x, 2=x+z, 3=xyz)
 #
-def qchem_job(var, molec, cjobtype):
+def qchem_job(var, molec, cjobtype, nstates):
     # Create the input file and run QChem. Then extract the
     # density information, and print to file '*_dens.data'
+    # After this, get energy information and save it to '*_states.data'
     create_qchem_file(molec, var)
     create_nbox_files(molec)
     command_line("qchem -nt "+str(NTHREADS)+" "+molec+".input > "+molec+".output")
     cdxz_prog = PROGRAM_HOME+"/bin/cubedata_into_training_data.x"
     command_line(cdxz_prog+" den_p_0.cube "+str(cjobtype)+" > "+molec+"_dens.data")    
+    
+
+    qfile = open(molec+".output", "r")
+    qf_lines = (qfile.read().splitlines())
+    qfile.close()
+    nlines = len(qf_lines)
+    estart_line = 0
+    for i in range(nlines):
+        # Loop through qchem output file to find the Final CI Energy
+        if "==== Final CI Energy ====" in str(qf_lines[i]):
+            estart_line = i
+            break
+    estart_line = estart_line + 1 # Adjust for first entry
+    # Now read data for each state
+    energy = []
+    for i in range(nstates):
+        e_line = qf_lines[estart_line + i]
+        e_line = e_line.replace(" CI Energy (au) Root #   "+str(i),"").strip()
+        energy.append(e_line)
+
+    efile = open(molec+"_states.data", "w")
+    for i in range(nstates):
+        efile.write("%s\n" % energy[i])
+    efile.close()
+
     # Save logs
     command_line("cat "+molec+".output >> qc."+molec+".log")
-
+    
 #
 # save_var_to_indexed_file: Save the current coefficients to a file.
 # This routine is used for processing inputs that were submitted as batch jobs

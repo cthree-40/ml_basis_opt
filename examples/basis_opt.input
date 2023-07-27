@@ -1,11 +1,11 @@
 JOBTYPE = "gen_training"
 TRAIN_RSEED = 100001
 TEST_RSEED  = 200001
-MOLEC_SYS = [["hcn", 64, 2], ["hehhe", 64, 2]]                          
-NUM_PARAM = 3                                                           
-ORBITAL_TYPE = "S"                                                      
+MOLEC_SYS = [["hcn", 64, 2, 3], ["hehhe", 64, 2, 3]]                          
+NUM_PARAM = 5                                                           
+ORBITAL_TYPE = ["S", "P", "P", "P", "P"]                                                      
 BUILD_TRAINING_SET = False                                               
 BUILD_TRANING_SET_ONLY = True                                           
-INIT_DATA_SIZE = 300                                          
+INIT_DATA_SIZE = 1000                                   
 BUILD_TESTING_SET = False                                              
 TEST_DATA_SIZE = 10                                                     

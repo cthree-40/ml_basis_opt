@@ -75,6 +75,7 @@ contains
   end subroutine compute_rms_error
 
   ! Create weight vector based on value
+  ! w(x) = 1 + tanh{(Max[f] - f(x))/ Max[f]} - tanh{(Max[f]-Min[f])/Max[f]}
   subroutine create_weight_vector(wts, ref, npts)
     
     implicit none
@@ -83,10 +84,70 @@ contains
     double precision, dimension(npts), intent(in) :: ref
     double precision, dimension(npts), intent(inout) :: wts
     
-    ! Fit all points at wt=1.0
-    wts = 1.0
+    double precision :: max_val, min_val, max_min_diff
+
+    integer :: i
+
+    if (.true.) then
+        wts = 1.0d0
+    else
+        call find_max(ref, npts, max_val)
+        call find_min(ref, npts, min_val)
+        print *, max_val
+        print *, min_val
+        
+        max_min_diff = max_val - min_val
+        
+        do i = 1, npts
+            wts(i) = 1.0d0 + dtanh((max_val - ref(i))/max_val) &
+                - dtanh((max_val - min_val)/max_val)
+        end do
+        
+    end if
 
   end subroutine create_weight_vector
+  
+  ! Find maximum value in double precision array
+  subroutine find_max(a, dim, val)
+    implicit none
+    integer, intent(in) :: dim
+    double precision, dimension(dim), intent(in) :: a
+    double precision, intent(out) :: val
+    
+    integer :: i
+    double precision :: curr_max
+    
+    curr_max = 0.0
+    val = curr_max
+    do i = 1, dim
+        if (a(i) .gt. curr_max) then
+            val = a(i)
+            curr_max = a(i)
+        end if
+    end do
+    
+  end subroutine find_max
+
+  ! Find minimum value in double precision array
+  subroutine find_min(a, dim, val)
+    implicit none
+    integer, intent(in) :: dim
+    double precision, dimension(dim), intent(in) :: a
+    double precision, intent(out) :: val
+    
+    integer :: i
+    double precision :: curr_min
+    
+    curr_min = 0.0
+    val = curr_min
+    do i = 1, dim
+        if (a(i) .lt. curr_min) then
+            val = a(i)
+            curr_min = a(i)
+        end if
+    end do
+    
+  end subroutine find_min
 
   ! Read in density file
   subroutine read_density_file(flname, flunit, dens, npts)

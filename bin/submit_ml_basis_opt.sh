@@ -8,8 +8,8 @@
 # Set up environmental variables
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_SCHEDULE=dynamic
-export OMP_PROC_BIND=true
-export OMP_PLACES=threads
+#export OMP_PROC_BIND=true
+#export OMP_PLACES=threads
 
 export ML_DIR="/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_basis_opt"
 export ML_SDIR="$ML_DIR/source"
