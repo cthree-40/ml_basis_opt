@@ -59,6 +59,9 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_ba
 # Orbital type
 #ORBITAL_TYPE = ["S","S"]
 
+# Penalty function weights
+# PENFCN_WEIGHTS = {"density" : 10.0, "excited states" : 1.0, "ground state" : 1.0}
+
 # Build training data set
 # True  = Evaluate F(x) for every set of x and build training.dat file
 # False = Create input files for every set of x, but do not evaluate
@@ -282,11 +285,12 @@ def objective_function_value(var):
     # Compute QChem job with values and extract densities and states
     for i in range(len(MOLEC_SYS)):
         qchem_job(var, MOLEC_SYS[i][0], MOLEC_SYS[i][2], MOLEC_SYS[i][3])
-
+        
+    wt = PENFCN_WEIGHTS
     val = 0.0
-    val = val + objective_function_value_density(var)
-    val = val + objective_function_value_excited_states(var)
-    val = val + objective_function_value_zeropoint(var)
+    val = val + wt["density"] * objective_function_value_density(var)
+    val = val + wt["excited states"] * objective_function_value_excited_states(var)
+    val = val + wt["ground state"] * objective_function_value_zeropoint(var)
 
     return val
 
@@ -345,9 +349,9 @@ def objective_function_value_excited_states(var):
         nsts = MOLEC_SYS[i][3]
         nxst = nsts - 1
         
-        # Read in excited states (in eV)
+        # Read in excited states. Arrive converted to cm-1
         xstates = get_excited_states_from_file(name+"_states.data", nxst)
-        # Read in reference excited states (in eV)
+        # Read in reference excited states. Arrive converted to cm-1
         ref_xst = get_excited_states_from_file(name+"_states.fgh.data", nxst)
 
         # Compute RMSE
@@ -386,13 +390,13 @@ def objective_function_value_zeropoint(var):
         # Name of system
         name = MOLEC_SYS[i][0]
         
-        # Read in ground states (in au)
+        # Read in ground states. Arrive in au
         e0_qch = get_ground_states_from_file(name+"_states.data")
-        # Read in reference ground states (in au)
+        # Read in reference ground states. Arrive in au
         e0_ref = get_ground_states_from_file(name+"_states.fgh.data")
 
-        # Compute RMSE
-        val = e0_qch - e0_ref
+        # Get difference in cm-1, and compute RMSE
+        val = (e0_qch - e0_ref)*219474.63
         val = val * val
         val = math.sqrt(val)
         rmse.append(val)
@@ -406,7 +410,7 @@ def objective_function_value_zeropoint(var):
 
 #
 # get_excited_states_from_file: Get excited state energies from
-# a file. Convert these energies to eV
+# a file. Convert these energies to cm-1
 # Input:
 #  flname = File name containing state information
 #  nsts   = Number of excited states
@@ -435,7 +439,7 @@ def get_excited_states_from_file(flname, nsts):
         
         # Convert to eV
         for i in range(len(xstates)):
-            xstates[i] = (xstates[i] - float(ef_lines[0]))*27.211399
+            xstates[i] = (xstates[i] - float(ef_lines[0]))*219474.63
             
     else:
         
@@ -446,6 +450,7 @@ def get_excited_states_from_file(flname, nsts):
 
 #
 # get_ground_state_from_file: Get ground state energies from a file.
+# Energy returned is absolute in hartree.
 # Input:
 #  flname = File name containing state information
 # Output:

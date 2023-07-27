@@ -1,7 +1,8 @@
 JOBTYPE = "gen_training"
 TRAIN_RSEED = 100001
 TEST_RSEED  = 200001
-MOLEC_SYS = [["hcn", 64, 2, 3], ["hehhe", 64, 2, 3]]                          
+MOLEC_SYS = [["hcn", 64, 2, 3], ["hehhe", 64, 2, 3]]
+PENFCN_WEIGHTS = {"density" : 10.0, "excited states" : 1.0, "ground state" : 1.0}                          
 NUM_PARAM = 5                                                           
 ORBITAL_TYPE = ["S", "P", "P", "P", "P"]                                                      
 BUILD_TRAINING_SET = False                                               
