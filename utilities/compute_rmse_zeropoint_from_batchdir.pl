@@ -12,7 +12,7 @@ use Cwd qw(getcwd);
 #
 # Molecular systems
 #
-my @molec_sys = (["hcn", 64, 2], ["hehhe", 64, 2]);
+my @molec_sys = (["hcn", 64, 2, 3], ["hehhe", 64, 2, 3]);
 
 
 # Ensure we have directories for each system
@@ -31,13 +31,17 @@ for (my $i = 0; $i <= $#molec_sys; $i++) {
         my $jtype = $molec_sys[$i][2];
         my $npts  = $molec_sys[$i][1];
         
-        system("\$MLBASOPT/bin/cubedata_into_training_data.x den_p_0.cube ${jtype} > ${mname}_dens.data");
-        system("\$MLBASOPT/bin/compute_rmse_density.x ${mname}_dens.data ${mname}_dens.fgh.data ${npts} > ${mname}.rmse");
-        
-        open(FILE, "<", "${mname}.rmse") or die "Could not open file ${mname}.rmse!\n";
-        my $rmse = <FILE>;
-        chomp($rmse);
+        # Read in ground states. 
+        open(FILE, "<", "${mname}_states.data");
+        chomp(my @qce = <FILE>);
         close(FILE);
+        open(FILE, "<", "${mname}_states.fgh.data");
+        chomp(my @ref = <FILE>);
+        close(FILE);
+        
+        $rmse = (qce[0] - ref[0]) * 219474.63;
+        $rmse = $rmse * $rmse;
+        $rmse = sqrt($rmse);
         
         # Add RMSE to RMSE_VAL
         $rmse_val = $rmse_val + $rmse;
@@ -47,6 +51,7 @@ for (my $i = 0; $i <= $#molec_sys; $i++) {
     } else {
         print "WARNING: Directory not found! $molec_sys[$i][0]\n";
     }
+
 }
 
 # Read parameters
@@ -55,7 +60,7 @@ chomp(my @var = <FILE>);
 close(FILE);
 
 # Print final output
-open(FILE, ">", "density.rmse.dat") or die "Could not open file to write density.rmse.dat!\n";
+open(FILE, ">", "zero_point.rmse.dat") or die "Could not open file to write zero_point.rmse.dat!\n";
 printf FILE " %15.8f\n", $rmse_val;
 close(FILE);
 

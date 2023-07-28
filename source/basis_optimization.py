@@ -56,6 +56,9 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_ba
 # Number of parameters being optimized
 #NUM_PARAM = 2
 
+# Bounds for parameters
+#PBOUNDS = [(0.01, 20.0), (0.01, 50.0)]
+
 # Orbital type
 #ORBITAL_TYPE = ["S","S"]
 
@@ -160,7 +163,7 @@ def generate_initial_dataset(init_data_size, num_param, run):
     # for parameters. Valid values for the parameters occur within
     # bounds.
     var = np.ndarray(shape=(init_data_size, num_param), dtype=float)
-    bnds = get_param_bounds(num_param, 50.0, 0.001)
+    bnds = get_param_bounds()
     print("Generating training set with bounds: ")
     for i in range(num_param):
         hi = bnds[i][1]
@@ -216,7 +219,7 @@ def generate_testing_dataset(test_data_size, num_param):
     # for parameters. Valid values for the parameters occur within
     # bounds.
     var = np.ndarray(shape=(test_data_size, num_param), dtype=float)
-    bnds = get_param_bounds(num_param, 50.0, 0.001)
+    bnds = get_param_bounds()
     print("Generating testing data set with bounds: ")
     for i in range(num_param):
         hi = bnds[i][1]
@@ -429,7 +432,7 @@ def get_excited_states_from_file(flname, nsts):
 
         nlines = len(ef_lines)
         # Ensure we have all states required
-        if (nlines <= nsst):
+        if (nlines <= nsts):
             print("Missing excited state information.")
             sys.exit("Error message")
             
@@ -475,31 +478,9 @@ def get_ground_state_from_file(flname):
 
 #
 # get_param_bounds: Get lower and upper bounds for each parameter.
-# Input:
-#  num_param = number of parameters
-#  hi        = greatest upper bound
-#  lo        = least lower bound
-# Output:
-#  bnds = Upper and lower bounds for each parameter
 #
-def get_param_bounds(num_param, hi, lo):
-    # Compute bound range. Loop over each parameter computing the
-    # bounds for each and adding to array.
-    #upper_bound = hi
-    #bound_range = upper_bound / float(num_param)
-    #lower_bound = upper_bound - bound_range
-    #bnds = []
-    #for i in range(num_param):
-    #    bnds.append((lower_bound, upper_bound))
-    #    upper_bound = upper_bound - bound_range - 0.01
-    #    lower_bound = upper_bound - 2.0 * bound_range
-    #    if (i == (num_param - 2)):
-    #        lower_bound = lo
-    bnds = []
-    for i in range(num_param):
-        bnds.append((lo, hi))
-
-    return bnds
+def get_param_bounds():
+    return PBOUNDS
 
 #
 # qchem_job: Compute a QChem job with basis set parameters given by
@@ -652,7 +633,7 @@ def train_gp_and_return_opt(var, result):
     for j in range(1):
         
         # Get lower/upper bounds for each parameter
-        bnds = get_param_bounds(NUM_PARAM, 50.0, 0.001)
+        bnds = get_param_bounds()
 
         minimizer = {"method": "SLSQP", "args":gp,"bounds":bnds}
         res = basinhopping(gp_objfcn,X[10*(j),:],minimizer_kwargs=minimizer,niter=2000)

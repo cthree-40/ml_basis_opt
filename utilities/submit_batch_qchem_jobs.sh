@@ -8,8 +8,8 @@
 # Set necessary environmental variables
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_SCHEDULE=dynamic
-export OMP_PROC_BIND=true
-export OMP_PLACES=threads
+#export OMP_PROC_BIND=true
+#export OMP_PLACES=threads
 
 # Set up development qchem environment
 source /home/clm96/.qcdevsetup
@@ -22,21 +22,24 @@ echo "OMP_SCHEDULE = $OMP_SCHEDULE"
 
 for i in $( seq ${1} ${2} ); do
     cd $i
-
-    cd hehhe
-    cp hehhe.nbox_npts.txt nbox_npts.txt
-    cp hehhe.nbox_data.txt nbox_data.txt
-    # Run QChem
-    qchem -nt $OMP_NUM_THREADS hehhe.input > hehhe.output
-
-    cd ../
-    cd hcn
-    cp hcn.nbox_npts.txt nbox_npts.txt
-    cp hcn.nbox_data.txt nbox_data.txt
-    # Run QChem
-    qchem -nt $OMP_NUM_THREADS hcn.input > hcn.output
     
+    if [ -d "hehhe" ]; then
+        cd hehhe
+        cp hehhe.nbox_npts.txt nbox_npts.txt
+        cp hehhe.nbox_data.txt nbox_data.txt
+        # Run QChem
+        qchem -nt $OMP_NUM_THREADS hehhe.input > hehhe.output
+        cd ../
+    fi
+
+    if [ -d "hcn" ]; then
+        cd hcn
+        cp hcn.nbox_npts.txt nbox_npts.txt
+        cp hcn.nbox_data.txt nbox_data.txt
+        # Run QChem
+        qchem -nt $OMP_NUM_THREADS hcn.input > hcn.output
     cd ../
-    
+    fi
+
     cd ../
 done
