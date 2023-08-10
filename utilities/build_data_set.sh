@@ -4,23 +4,33 @@
 
 startdir=$1
 finaldir=$2
+nstates=$3
 
 for i in $( seq $startdir $finaldir )
 do
     cd $i
     
-    # Get parameters from hcn/hcn.input file
-    $MLBASOPT/utilities/get_var_values_from_file.sh hcn/hcn.input > var.dat
-    
+    # Get state information
+    for j in $( ls ); do
+        if [[ -d "${j}"  && -f "${j}/${j}.output" ]]; then
+            cd $j
+            python $MLBASOPT/utilities/get_states_from_file.py -n $nstates -m $j 
+            cd ../
+        fi
+    done
+
     # Compute RMSEs
     $MLBASOPT/utilities/compute_rmse_density_from_batchdir.pl
     $MLBASOPT/utilities/compute_rmse_zeropoint_from_batchdir.pl
     $MLBASOPT/utilities/compute_rmse_excited_states_from_batchdir.pl
-    
-    $MLBASOPT/utilities/compute_penalty_function_from_batchdir.pl > rmse.dat
+    $MLBASOPT/utilities/compute_rmse_all_states_from_batchdir.pl
+
+    $MLBASOPT/utilities/compute_penalty_function_from_batchdir.pl 1.0 0.0 0.0 1.0 > rmse.dat
 
     cd ../
 done
+
+rm -rf training.dat
 
 for i in $( seq $startdir $finaldir )
 do

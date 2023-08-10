@@ -25,7 +25,7 @@ my $rmse_val = 0.0;
 for (my $i = 0; $i <= $#molec_sys; $i++) {
 
     # Enter directory
-    if (-d "$molec_sys[$i][0]") {
+    if (-e "$molec_sys[$i][0]/$molec_sys[$i][0].input" ) {
         chdir "$molec_sys[$i][0]";
         my $mname = $molec_sys[$i][0];
         my $jtype = $molec_sys[$i][2];
@@ -52,7 +52,7 @@ for (my $i = 0; $i <= $#molec_sys; $i++) {
             my $diff = $qce[$i] - $ref[$i];
             $rmse = $rmse + ($diff * $diff);
         }
-        $rmse = $rmse / float($nstate);
+        $rmse = $rmse / $nstate;
         $rmse = sqrt($rmse);
         
         # Add RMSE to RMSE_VAL

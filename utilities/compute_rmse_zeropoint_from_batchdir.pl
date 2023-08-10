@@ -25,21 +25,21 @@ my $rmse_val = 0.0;
 for (my $i = 0; $i <= $#molec_sys; $i++) {
 
     # Enter directory
-    if (-d "$molec_sys[$i][0]") {
+    if (-e "$molec_sys[$i][0]/$molec_sys[$i][0].input") {
         chdir "$molec_sys[$i][0]";
         my $mname = $molec_sys[$i][0];
         my $jtype = $molec_sys[$i][2];
         my $npts  = $molec_sys[$i][1];
         
         # Read in ground states. 
-        open(FILE, "<", "${mname}_states.data");
+        open(FILE, "<", "${mname}_states.data") or die "No states.data file found!";
         chomp(my @qce = <FILE>);
         close(FILE);
-        open(FILE, "<", "${mname}_states.fgh.data");
+        open(FILE, "<", "${mname}_states.fgh.data") or die "No states.fgh.data file found!";
         chomp(my @ref = <FILE>);
         close(FILE);
         
-        $rmse = (qce[0] - ref[0]) * 219474.63;
+        my $rmse = ($qce[0] - $ref[0]) * 219474.63;
         $rmse = $rmse * $rmse;
         $rmse = sqrt($rmse);
         

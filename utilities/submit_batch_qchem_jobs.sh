@@ -23,7 +23,7 @@ echo "OMP_SCHEDULE = $OMP_SCHEDULE"
 for i in $( seq ${1} ${2} ); do
     cd $i
     
-    if [ -d "hehhe" ]; then
+    if [ -e "hehhe/hehhe.input" ]; then
         cd hehhe
         cp hehhe.nbox_npts.txt nbox_npts.txt
         cp hehhe.nbox_data.txt nbox_data.txt
@@ -32,7 +32,7 @@ for i in $( seq ${1} ${2} ); do
         cd ../
     fi
 
-    if [ -d "hcn" ]; then
+    if [ -e "hcn/hcn.input" ]; then
         cd hcn
         cp hcn.nbox_npts.txt nbox_npts.txt
         cp hcn.nbox_data.txt nbox_data.txt

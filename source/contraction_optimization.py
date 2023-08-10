@@ -51,6 +51,7 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_ba
 # Maximum number of iterations
 # MAX_ITER = 10
 
+
 # Random seeds
 # TRAIN_RSEED = 100001
 # TEST_RSEED  = 200001
@@ -61,21 +62,26 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_ba
 # 2 = RQ
 # MLKERNEL = 1
 
+
 # Systems used to train model. 
 #  [Name, # of density pts, cubedata jobtype, # states]
 #MOLEC_SYS = [["hcn", 64, 2, 1], ["hehhe", 64, 2, 1]]
 
 # Number of parameters being optimized
-#NUM_PARAM = 2
+#NUM_PARAM = 4
 
 # Bounds for parameters
-#PBOUNDS = [(0.01, 20.0), (0.01, 50.0)]
+#PBOUNDS = [(0.0, 1.0), (0.0, 1.0), (0.0, 1.0), (0.0, 1.0)]
+
 
 # Orbital type
-#ORBITAL_TYPE = ["S","S"]
+#ORBITAL_TYPE = ["S"]
+
+# Contraction shell
+#CSHELL_EXP = [7.6130, 16.077, 20.457, 47.011]
 
 # Penalty function weights
-# PENFCN_WEIGHTS = {"density" : 10.0, "excited states" : 1.0, "ground state" : 1.0, "states" : 0.0}
+# PENFCN_WEIGHTS = {"density" : 10.0, "excited states" : 1.0, "ground state" : 1.0, "states" : 1.0}
 
 # Build training data set
 # True  = Evaluate F(x) for every set of x and build training.dat file
@@ -132,6 +138,9 @@ def create_nbox_files(molec):
 #  var   = parameters
 #
 def create_qchem_file(molec, var):
+    
+    # Open the basis file and get lines before/after contraction
+    (avant_basis, apres_basis) = read_basis_from_file("protonic_basis.input")
 
     # Create name as string to open input file deck and input file to make.
     # Copy deck file to make new file. Append basis set information to
@@ -143,9 +152,21 @@ def create_qchem_file(molec, var):
     input_file = open(qcin_fname, "a")
     
     input_file.write("$neo_basis\nH    3\n")
+    
+    # Write out basis lines before contraction
+    for i in range(len(avant_basis)):
+        input_file.write(str(avant_basis[i])+"\n")
+        
+    # Write out contraction (what we are optimizing)
+    input_file.write(str(ORBITAL_TYPE[0])+"    "+str(NUM_PARAM)+"    1.0\n")
     for i in range(len(var)):
-        input_file.write(str(ORBITAL_TYPE[i])+"   1   1.0\n")
-        input_file.write(" %.5f   1.0000D+00\n" % var[i])
+        input_file.write("%8.4f"  % CSHELL_EXP[i])
+        input_file.write("%10.6f\n" % var[i])
+    
+    # Write out basis lines after contraction
+    for i in range(len(apres_basis)):
+        input_file.write(str(apres_basis[i])+"\n")
+
     input_file.write("****\n$end\n")
 
     input_file.close()
@@ -260,9 +281,8 @@ def generate_testing_dataset(test_data_size, num_param):
 # gp_objfcn: Evaluate the GP objective function
 # Input:
 #  gp = GP object
-#  X  = parameters
+#  X  = np.divide(1/X)
 def gp_objfcn(X, gp):
-    #Xinv = np.divide(1, X)
     y_pred, sigma = gp.predict(np.atleast_2d(X), return_std=True)
     return y_pred
 
@@ -286,7 +306,7 @@ def kernel_user():
     print ('For Mattern function, enter 0')
     print ('For Radial-basis function kernel, enter 1')
     print ('For Rational Quadratic kernel, enter 2')
-    var = MLKERNEL
+    var = 1 #I select Radial-basis kernel, user can change it
     i = int(var)
     ks = k_[i]
     print ('You selected --->', i, kt_[i])
@@ -307,54 +327,8 @@ def objective_function_value(var):
     val = val + wt["density"] * objective_function_value_density(var)
     val = val + wt["excited states"] * objective_function_value_excited_states(var)
     val = val + wt["ground state"] * objective_function_value_zeropoint(var)
-    val = val + wt["states"] * objective_function_value_all_states(var)
+
     return val
-
-#
-# objective_function_value_all_states: Compute the all states component of the
-# objective function.
-#
-# Info: This objective function calls programs to compute RMSE between QChem and 
-# FGH energies.
-#
-# Input:
-#  var = parameters
-# Output:
-#  RMSE for all states
-#
-def objective_function_value_all_states(var):
-    
-    # Compute RMSE value for each system
-    rmse = []
-    for i in range(len(MOLEC_SYS)):
-        # Name of system and number of states.
-        name = MOLEC_SYS[i][0]
-        nsts = MOLEC_SYS[i][3]
-        
-        # Read in excited states. Arrive converted in au
-        states = get_all_states_from_file(name+"_states.data", nsts)
-        # Read in reference excited states. Arrive converted to au
-        ref_st = get_all_states_from_file(name+"_states.fgh.data", nsts)
-
-        # Compute RMSE
-        val = 0.0
-        for i in range(nsts):
-            
-            diff = (states[i] - ref_st[i]) * 219474.63 # Convert to cm-1
-            
-            val = val + diff * diff
-
-        val = val / float(nsts)
-        val = math.sqrt(val)
-        rmse.append(val)
-        
-    # Sum errors
-    rmse_val = 0.0
-    for i in range(len(MOLEC_SYS)):
-        rmse_val = rmse_val + rmse[i]
-
-    return rmse_val
-
 
 #
 # objective_function_value_density: Compute the density component of the objective
@@ -469,43 +443,6 @@ def objective_function_value_zeropoint(var):
         rmse_val = rmse_val + rmse[i]
 
     return rmse_val
-
-#
-# get_all_states_from_file: Get state energies from
-# a file.
-# Input:
-#  flname = File name containing state information
-#  nsts   = Number of excited states
-# Output:
-#  states = Excited states
-#
-def get_all_states_from_file(flname, nsts):
-    
-    states = []
-
-    if os.path.isfile(flname):
-        
-        efile = open(flname, "r")
-        ef_lines = (efile.read().splitlines())
-        efile.close()
-
-        nlines = len(ef_lines)
-        # Ensure we have all states required
-        if (nlines < nsts):
-            print("Missing state information.")
-            sys.exit("Error message")
-            
-
-        for i in range(0, nlines):
-            states.append(float(ef_lines[i]))
-        
-    else:
-        
-        print("Could not find energy file! "+flname)
-        sys.exit("Error message")
-    
-    return states
-
 
 #
 # get_excited_states_from_file: Get excited state energies from
@@ -625,7 +562,34 @@ def qchem_job(var, molec, cjobtype, nstates):
 
     # Save logs
     command_line("cat "+molec+".output >> qc."+molec+".log")
+
+#
+# read_basis_from_file: Read in basis from file for uncontracted parts
+# Input:
+#  flname = basis file name containing before/after uncontracted parts
+# Return:
+#  avant_basis = basislines before contraction
+#  apres_basis = basis lines after contraction
+#
+def read_basis_from_file(flname):
     
+    if not os.path.isfile(flname):
+        print("No basis file found. "+flname+" Aborting...")
+        sys.exit("Error message")
+
+    bfile = open(flname, "r")
+    bf_lines = (bfile.read().splitlines())
+    bfile.close()
+    contract_where = 0
+    for i in range(len(bf_lines)):
+        if "<CONTRACTED SHELL>" in str(bf_lines[i]):
+            contract_where = i
+            break
+    avant_basis = bf_lines[0:contract_where]
+    apres_basis = bf_lines[(contract_where + 1):]
+
+    return (avant_basis, apres_basis)
+
 #
 # save_var_to_indexed_file: Save the current coefficients to a file.
 # This routine is used for processing inputs that were submitted as batch jobs
@@ -691,10 +655,10 @@ def train_gp_and_return_opt(var, result):
 
     # Kernel selection
     d = NUM_PARAM
-    ck = C(1.0, (1e-5, 1e+5))
-    kernels_m = [RBF(length_scale=np.ones(d), length_scale_bounds=(1e-5, 1e+5)),
-                 RQ(length_scale=1.0, alpha=0.1,length_scale_bounds=(1e-5, 1e+5), alpha_bounds=(1e-5, 1e+5)),
-                 Matern(length_scale=np.ones(d), length_scale_bounds=(1e-5, 1e+5),nu=2.5)]
+    ck = C(1.0, (1e-3, 1e3))
+    kernels_m = [RBF(length_scale=np.ones(d), length_scale_bounds=(1e-3, 1e+3)),
+                 RQ(length_scale=1.0, alpha=0.1,length_scale_bounds=(1e-3, 1e3), alpha_bounds=(1e-3, 1e3)),
+                 Matern(length_scale=np.ones(d), length_scale_bounds=(1e-3, 1e+3),nu=2.5)]
     ks = kernel_user()
     if ks == "mat":
         k = ck * kernels_m[2]
@@ -712,12 +676,10 @@ def train_gp_and_return_opt(var, result):
     print("Training GP model")
     gp = GaussianProcessRegressor(kernel = k, n_restarts_optimizer = 12)
     gp.fit(np.atleast_2d(X), Y)
-    #gp.fit(np.atleast_2d(Xinv), Y)
     print("Log-marginal-likelihood (GP): %.3f" % gp.log_marginal_likelihood(gp.kernel_.theta))
     
     print("Prediction with GP model")
     y_pred, sigma = gp_prediction(gp, Xt)
-    #y_pred, sigma = gp_prediction(gp, Xtinv)
     ygp = np.column_stack((Yt, y_pred, sigma))
     dpred = np.column_stack((Xt, ygp))
     print("Save predicted points")
@@ -725,17 +687,16 @@ def train_gp_and_return_opt(var, result):
     rmse = np.sqrt(mse(Yt, y_pred))
     print("RMSE = ", rmse)
     print(" ----------------------------------\n")
-    sys.stdout.flush()
-
-    # Optimization
-    nsearch = 1
-    for j in range(nsearch):
+    
+    # Global optimization search
+    opt_iter = 10
+    for j in range(1):
         
         # Get lower/upper bounds for each parameter
         bnds = get_param_bounds()
 
         minimizer = {"method": "SLSQP", "args":gp,"bounds":bnds}
-        res = basinhopping(gp_objfcn,X[nsearch*(j),:],minimizer_kwargs=minimizer,niter=5000)
+        res = basinhopping(gp_objfcn,X[10*(j),:],minimizer_kwargs=minimizer,niter=5000)
         for i in range(NUM_PARAM):
             var[NUM_PARAM*j+i] = res.x[i]
             #X[0,i] = np.divide(1,res.x[i])
@@ -834,7 +795,7 @@ if __name__ == "__main__":
         
         if (gpr_reliable):
             print("Valid minimum found!")
-            print("Basis:")
+            print("Contraction coefficients:")
             for i in range(NUM_PARAM):
                 print(" %10.5f" % str(var[i]), end="")
             print(" %10.8f\n" % result[0])
@@ -842,3 +803,6 @@ if __name__ == "__main__":
             print("Need more points.\n")
 
     print("Job complete.")
+
+
+

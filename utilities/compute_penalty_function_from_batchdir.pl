@@ -13,8 +13,8 @@ use Cwd qw(getcwd);
 #
 
 # Process command line arguments
-my ($w_den, $w_xst, $w_gst) = @ARGV;
-if ( ! defined $w_den || ! defined $w_xst || ! defined $w_gst ) {
+my ($w_den, $w_xst, $w_gst, $w_ast) = @ARGV;
+if ( ! defined $w_den || ! defined $w_xst || ! defined $w_gst || ! defined $w_ast ) {
     die "Please provide weights for function.\n";
 }
 
@@ -28,8 +28,12 @@ close(FILE);
 open(FILE, "<", "zero_point.rmse.dat") or die "Could not open zero_point.rmse.dat!\n";
 chomp(my @gst_error = <FILE>);
 close(FILE);
+open(FILE, "<", "all_states.rmse.dat") or die "Could not open all_states.rmse.dat!\n";
+chomp(my @ast_error = <FILE>);
+close(FILE);
 
-my $rmse_val = $w_den * $dens_error[0] + $w_xst * $xst_error[0] + $w_gst * $gst_error[0];
+my $rmse_val = ($w_den * $dens_error[0] + $w_xst * $xst_error[0] + $w_gst * $gst_error[0] 
+                + $w_ast * $ast_error[0]);
 
 
 # Read parameters
@@ -38,7 +42,7 @@ chomp(my @var = <FILE>);
 close(FILE);
 
 # Print final output
-open(FILE, ">", "density.rmse.dat") or die "Could not open file to write density.rmse.dat!\n";
+open(FILE, ">", "rmse.dat") or die "Could not open file to write rmse.dat!\n";
 for (my $i = 0; $i <= $#var; $i++) {
     printf FILE " %10.5f", $var[$i];
 }
