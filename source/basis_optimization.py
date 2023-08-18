@@ -728,23 +728,49 @@ def train_gp_and_return_opt(var, result):
     sys.stdout.flush()
 
     # Optimization
-    nsearch = 1
+    nsearch = 5 # Number of guess searches
+    var_loc = [0.0] * NUM_PARAM * nsearch
+    res_loc = [0.0] * nsearch
+    xrows, xcols = X.shape
+    # Starting points
+    sg = np.random.randint(0, xrows, nsearch)
+    fvals = X[:,xcols - 1]
+    sg[0] = np.argmin(fvals)
     for j in range(nsearch):
         
         # Get lower/upper bounds for each parameter
         bnds = get_param_bounds()
 
         minimizer = {"method": "SLSQP", "args":gp,"bounds":bnds}
-        res = basinhopping(gp_objfcn,X[nsearch*(j),:],minimizer_kwargs=minimizer,niter=5000)
+        res = basinhopping(gp_objfcn,X[sg[j],:],minimizer_kwargs=minimizer,niter=5000)
         for i in range(NUM_PARAM):
-            var[NUM_PARAM*j+i] = res.x[i]
+            var_loc[NUM_PARAM*j+i] = res.x[i]
             #X[0,i] = np.divide(1,res.x[i])
             X[0,i] = res.x[i]
             out, sigma = gp_prediction(gp,X[0,:])
-            result[j]=out[0]
+            res_loc[j]=out[0]
+            
+    print(" Minima:")
+    for j in range(nsearch):
+        print(" %10.8f" % res_loc[j], end="")
+    print("\n")
+
+    # Find lowest minimum
+    min_val = 100000.0
+    min_idx = 0
+    for j in range(nsearch):
+        if (res_loc[j] < min_val):
+            min_idx = j
+            min_val = res_loc[j]
+    
+    # Print this minimum
     for i in range(NUM_PARAM):
-        print(" %10.5f" % var[i])
-    print(" %15.8f" % result[0])
+        print(" %10.5f" % var_loc[(NUM_PARAM * min_idx) + i])
+    print(" %15.8f" % res_loc[min_idx])
+    
+    # Return this minimum
+    var[0:NUM_PARAM] = var_loc[(NUM_PARAM * min_idx):(NUM_PARAM * min_idx) + NUM_PARAM]
+    result[0] = res_loc[min_idx]
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -794,7 +820,7 @@ if __name__ == "__main__":
                 print("GP predicted minimum = %15.8f\n" % gpmin)
                 print("Computed minimum     = %15.8f\n" % result[0])
                 print("Difference           = %15.8f\n" % diff)
-                if (abs(diff) < 1.0):
+                if ((abs(diff) < 1.0) and (gpmin < 100.0)):
                     gpr_reliable = True
                     break
             else:
@@ -836,7 +862,7 @@ if __name__ == "__main__":
             print("Valid minimum found!")
             print("Basis:")
             for i in range(NUM_PARAM):
-                print(" %10.5f" % str(var[i]), end="")
+                print(" %10.5f" % var[i], end="")
             print(" %10.8f\n" % result[0])
         else:
             print("Need more points.\n")
