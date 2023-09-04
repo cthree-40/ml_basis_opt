@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -l
 
 # Build training set
 
@@ -14,7 +14,7 @@ do
     for j in $( ls ); do
         if [[ -d "${j}"  && -f "${j}/${j}.output" ]]; then
             cd $j
-            python $MLBASOPT/utilities/get_states_from_file.py -n $nstates -m $j 
+            python3 $MLBASOPT/utilities/get_states_from_file.py -n $nstates -m $j 
             cd ../
         fi
     done

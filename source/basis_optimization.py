@@ -734,15 +734,15 @@ def train_gp_and_return_opt(var, result):
     xrows, xcols = X.shape
     # Starting points
     sg = np.random.randint(0, xrows, nsearch)
-    fvals = X[:,xcols - 1]
-    sg[0] = np.argmin(fvals)
+    sg[0] = np.argmin(Y)
+    print(" Minimum in training data: "+str(sg[0])+" , "+str(Y[sg[0]]))
     for j in range(nsearch):
         
         # Get lower/upper bounds for each parameter
         bnds = get_param_bounds()
 
         minimizer = {"method": "SLSQP", "args":gp,"bounds":bnds}
-        res = basinhopping(gp_objfcn,X[sg[j],:],minimizer_kwargs=minimizer,niter=5000)
+        res = basinhopping(gp_objfcn,X[sg[j],:],minimizer_kwargs=minimizer,niter=10000)
         for i in range(NUM_PARAM):
             var_loc[NUM_PARAM*j+i] = res.x[i]
             #X[0,i] = np.divide(1,res.x[i])
