@@ -98,7 +98,7 @@ contains
     
     integer :: i, mid
 
-    mid = ndisps / 2
+    mid = ndisps / 2 + 1
     
     do i = 1, ndisps
         dens(1, i) = start + disp_size * (i - 1)
