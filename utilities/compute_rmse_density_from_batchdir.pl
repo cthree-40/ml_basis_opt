@@ -17,16 +17,18 @@ my @molec_sys = (["hcn", 64, 2], ["hehhe", 64, 2]);
 
 # Ensure we have directories for each system
 for (my $i = 0; $i <= $#molec_sys; $i++) {
-    if (! -d $molec_sys[0][0]) { die "No directory: $molec_sys[$i][0]!\n"};
+    if (! -d $molec_sys[$i][0]) { print "No directory: $molec_sys[$i][0]!\n"};
 }
 
 my $rmse_val = 0.0;
+
 # Compute RMSE for each system
 for (my $i = 0; $i <= $#molec_sys; $i++) {
 
     # Enter directory
-    if (-e "$molec_sys[$i][0]/$molec_sys[$i][0].input") {
-        chdir "$molec_sys[$i][0]";
+    if (-e "$molec_sys[$i][0]/$molec_sys[$i][0].output") {
+        chdir "./$molec_sys[$i][0]";
+        
         my $mname = $molec_sys[$i][0];
         my $jtype = $molec_sys[$i][2];
         my $npts  = $molec_sys[$i][1];
@@ -44,9 +46,11 @@ for (my $i = 0; $i <= $#molec_sys; $i++) {
         
         # Leave directory
         chdir "../";
-    } else {
-        print "WARNING: Directory not found! $molec_sys[$i][0]\n";
     }
+    #else
+    #{
+    #    print "WARNING: Directory not found! $molec_sys[$i][0]\n";
+    #}
 }
 
 # Read parameters

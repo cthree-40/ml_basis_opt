@@ -17,7 +17,7 @@ my @molec_sys = (["hcn", 64, 2, 3], ["hehhe", 64, 2, 3]);
 
 # Ensure we have directories for each system
 for (my $i = 0; $i <= $#molec_sys; $i++) {
-    if (! -d $molec_sys[0][0]) { die "No directory: $molec_sys[$i][0]!\n"};
+    if (! -d $molec_sys[0][0]) { print "No directory: $molec_sys[$i][0]!\n"};
 }
 
 my $rmse_val = 0.0;
@@ -54,9 +54,11 @@ for (my $i = 0; $i <= $#molec_sys; $i++) {
         
         # Leave directory
         chdir "../";
-    } else {
-        print "WARNING: Directory not found! $molec_sys[$i][0]\n";
     }
+    #else
+    #{
+    #    print "WARNING: Directory not found! $molec_sys[$i][0]\n";
+    #}
 }
 
 # Read parameters
