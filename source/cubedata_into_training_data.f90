@@ -44,6 +44,9 @@ program cubedata_into_training_data
   if (ndisps(1) .ne. ndisps(3)) stop "*** NDISPS(1) != NDISPS(3) ***"
   if (ndisps(2) .ne. ndisps(3)) stop "*** NDISPS(2) != NDISPS(3) ***"
   call read_cubefile_cubedata(cubefile_name, cubedata, ndisps(1))
+
+  ! Reshape array
+  !cubedata = reshape(cubedata, ndisps)
   
   allocate(xdens(2, ndisps(1)))
   allocate(ydens(2, ndisps(2)))
@@ -98,8 +101,8 @@ contains
     
     integer :: i, mid
 
-    mid = ndisps / 2 + 1
-    
+    mid = (ndisps + 1) / 2
+
     do i = 1, ndisps
         dens(1, i) = start + disp_size * (i - 1)
         select case (axis)
