@@ -45,8 +45,6 @@ program cubedata_into_training_data
   if (ndisps(2) .ne. ndisps(3)) stop "*** NDISPS(2) != NDISPS(3) ***"
   call read_cubefile_cubedata(cubefile_name, cubedata, ndisps(1))
 
-  ! Reshape array
-  !cubedata = reshape(cubedata, ndisps)
   
   allocate(xdens(2, ndisps(1)))
   allocate(ydens(2, ndisps(2)))
