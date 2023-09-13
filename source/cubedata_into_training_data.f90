@@ -103,13 +103,14 @@ contains
 
     do i = 1, ndisps
         dens(1, i) = start + disp_size * (i - 1)
+        ! cubedata is packed (z, y, x)
         select case (axis)
-        case (1)
-            dens(2, i) = cubedata(i, mid, mid)
-        case (2)
-            dens(2, i) = cubedata(mid, i, mid)
-        case (3)
+        case (1) ! x-axis
             dens(2, i) = cubedata(mid, mid, i)
+        case (2) ! y-axis
+            dens(2, i) = cubedata(mid, i, mid)
+        case (3) ! z-axis
+            dens(2, i) = cubedata(i, mid, mid)
         case default
             stop "*** Error selecting axis for cube data ***"
         end select
