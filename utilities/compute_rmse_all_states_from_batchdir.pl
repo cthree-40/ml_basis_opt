@@ -12,7 +12,7 @@ use Cwd qw(getcwd);
 #
 # Molecular systems
 #
-my @molec_sys = (["hcn", 64, 2, 3], ["hehhe", 64, 2, 3]);
+my @molec_sys = (["hcn", 96, 3, 4], ["hehhe", 96, 3, 4]);
 
 
 # Ensure we have directories for each system
@@ -33,13 +33,13 @@ for (my $i = 0; $i <= $#molec_sys; $i++) {
         my $nstate= $molec_sys[$i][3];
         
         # Read in states. 
-        open(FILE, "<", "${mname}_states.data");
+        open(FILE, "<", "${mname}_states.data") or die "File not found!: ${mname}_states.data";
         chomp(my @qce = <FILE>);
         close(FILE);
-        open(FILE, "<", "${mname}_states.fgh.data");
+        open(FILE, "<", "${mname}_states.fgh.data") or die "File not found!: ${mname}_states.fgh.data";
         chomp(my @ref = <FILE>);
         close(FILE);
-        
+
         my $rmse = 0.0;
         # Compute RMSE
         for (my $i = 0; $i < $nstate; $i++) {

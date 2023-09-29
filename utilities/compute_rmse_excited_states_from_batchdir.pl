@@ -12,7 +12,7 @@ use Cwd qw(getcwd);
 #
 # Molecular systems
 #
-my @molec_sys = (["hcn", 64, 2, 3], ["hehhe", 64, 2, 3]);
+my @molec_sys = (["hcn", 96, 3, 4], ["hehhe", 96, 3, 4]);
 
 
 # Ensure we have directories for each system

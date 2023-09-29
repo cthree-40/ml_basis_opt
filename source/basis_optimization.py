@@ -457,8 +457,8 @@ def objective_function_value_zeropoint(var):
         # Read in reference ground states. Arrive in au
         e0_ref = get_ground_state_from_file(name+"_states.fgh.data")
 
-        # Get difference in cm-1, and compute RMSE
-        val = (e0_qch - e0_ref)*219474.63
+        # Get difference in au, and compute RMSE
+        val = (e0_qch - e0_ref)
         val = val * val
         val = math.sqrt(val)
         rmse.append(val)

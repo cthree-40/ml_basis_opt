@@ -9,7 +9,7 @@ use Cwd qw(getcwd);
 # Program to compute penalty function
 #
 
-# F = w_1 * density + w_2 * excited states + w_3 * ZPE
+# F = w_1 * density + w_2 * excited states + w_3 * ZPE + w_4 * all states
 #
 
 # Process command line arguments

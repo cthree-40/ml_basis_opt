@@ -2,9 +2,34 @@
 
 # Build training set
 
+if [ $# -eq 0 ]
+then
+    echo "Usage: build_data_set.sh [start] [final] [nstates]"
+    exit 1
+fi
+
+if [ -z "$1" ]
+then
+    echo "Missing first agument."
+    exit 1
+fi
 startdir=$1
+
+if [ -z "$2" ]
+then
+    echo "Missing second argument."
+    exit 1
+fi
 finaldir=$2
+
+if [ -z "$3" ]
+then
+    echo "Missing third argument."
+    exit 1
+fi
 nstates=$3
+
+
 
 for i in $( seq $startdir $finaldir )
 do
