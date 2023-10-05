@@ -34,7 +34,7 @@ nstates=$3
 for i in $( seq $startdir $finaldir )
 do
     cd $i
-    
+    echo "Collecting data for directory $i ..."
     # Get state information
     for j in $( ls ); do
         if [[ -d "${j}"  && -f "${j}/${j}.output" ]]; then
