@@ -5,6 +5,7 @@ for i in $( seq ${1} ${2} ); do
     mkdir $i
     mkdir $i/hcn
     mkdir $i/hehhe
+    mkdir $i/fhf
     
     if [ -e "hcn.input.${i}" ]; then
         mv hcn.input.$i $i/hcn/hcn.input
@@ -16,6 +17,12 @@ for i in $( seq ${1} ${2} ); do
         mv hehhe.input.$i $i/hehhe/hehhe.input
         cp hehhe.nbox* $i/hehhe
         cp hehhe*fgh* $i/hehhe
+    fi
+
+    if [ -e "fhf.input.${i}" ]; then
+        mv fhf.input.$i $i/fhf/fhf.input
+        cp fhf.nbox* $i/fhf/
+        cp fhf*fgh* $i/fhf/
     fi
 
     mv var.$i $i/var.dat

@@ -771,7 +771,7 @@ def train_gp_and_return_opt(var, result):
     # Return this minimum
     var[0:NUM_PARAM] = var_loc[(NUM_PARAM * min_idx):(NUM_PARAM * min_idx) + NUM_PARAM]
     result[0] = res_loc[min_idx]
-
+        
     print("--- %s seconds ---" % (time.time() - start_time))
 
         

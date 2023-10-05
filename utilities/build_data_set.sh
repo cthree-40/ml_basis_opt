@@ -50,7 +50,7 @@ do
     $MLBASOPT/utilities/compute_rmse_excited_states_from_batchdir.pl
     $MLBASOPT/utilities/compute_rmse_all_states_from_batchdir.pl
 
-    $MLBASOPT/utilities/compute_penalty_function_from_batchdir.pl 1.0 0.0 0.0 1.0 > rmse.dat
+    $MLBASOPT/utilities/compute_penalty_function_from_batchdir.pl 0.0 0.0 0.0 0.0 > rmse.dat
 
     cd ../
 done

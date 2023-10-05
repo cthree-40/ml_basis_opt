@@ -41,5 +41,14 @@ for i in $( seq ${1} ${2} ); do
     cd ../
     fi
 
+    if [ -e "fhf/fhf.input" ]; then
+        cd fhf
+        cp fhf.nbox_npts.txt nbox_npts.txt
+        cp fhf.nbox_data.txt nbox_data.txt
+        # Run QChem
+        qchem -nt $OMP_NUM_THREADS fhf.input > fhf.output
+    cd ../
+    fi
+    
     cd ../
 done
