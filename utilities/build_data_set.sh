@@ -50,6 +50,11 @@ do
     $MLBASOPT/utilities/compute_rmse_excited_states_from_batchdir.pl
     $MLBASOPT/utilities/compute_rmse_all_states_from_batchdir.pl
 
+    # [w_dens] [w_xst] [w_gst] [w_ast]
+    # w_dens = Ground state density
+    # w_xst  = Excited state energies (relative)
+    # w_gst  = Ground state energy    (absolute)
+    # w_ast  = All state energies     (absolute)
     $MLBASOPT/utilities/compute_penalty_function_from_batchdir.pl 0.0 0.0 0.0 0.0 > rmse.dat
 
     cd ../
