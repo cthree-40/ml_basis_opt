@@ -91,6 +91,9 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_ba
 # Size of testing data set
 #TEST_DATA_SIZE = 3
 
+# Compute penalty function in parallel
+#PARALLEL = "n"
+
 # Number of OMP Threads
 NTHREADS = os.getenv("OMP_NUM_THREADS")
 #---------------------------------------------------------------------
