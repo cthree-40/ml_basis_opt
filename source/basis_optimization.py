@@ -31,11 +31,10 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_ba
 # code using sed.
 # From and input file, the variables are printed below.
 #
-### GLOBAL VAR FROM INPUT ###
 
 
-# 
-# Default parameters commented out below.
+#
+# DEFAULT PARAMETERS ##############################################
 #
 
 # Jobtype for program execution
@@ -43,56 +42,63 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_ba
 #  gen_testing:  Generate testing input files for batch submission
 #  run_gpr:      Run GPR
 #  all:          Do all three
-# JOBTYPE = run_gpr
+JOBTYPE = run_gpr
 
 # Build the surface, or just return parameters
-# BUILD_SURFACE = True
+BUILD_SURFACE = True
 
 # Maximum number of iterations
-# MAX_ITER = 10
+MAX_ITER = 10
 
 # Random seeds
-# TRAIN_RSEED = 100001
-# TEST_RSEED  = 200001
+TRAIN_RSEED = 100001
+TEST_RSEED  = 200001
 
 # Kernel to use
 # 0 = Matern
 # 1 = RBF
 # 2 = RQ
-# MLKERNEL = 1
+MLKERNEL = 1
 
 # Systems used to train model. 
 #  [Name, # of density pts, cubedata jobtype, # states]
-#MOLEC_SYS = [["hcn", 64, 2, 1], ["hehhe", 64, 2, 1]]
+MOLEC_SYS = [["hcn", 64, 2, 1], ["hehhe", 64, 2, 1]]
 
 # Number of parameters being optimized
-#NUM_PARAM = 2
+NUM_PARAM = 2
 
 # Bounds for parameters
-#PBOUNDS = [(0.01, 20.0), (0.01, 50.0)]
+PBOUNDS = [(0.01, 20.0), (0.01, 50.0)]
 
 # Orbital type
-#ORBITAL_TYPE = ["S","S"]
+ORBITAL_TYPE = ["S","S"]
 
 # Penalty function weights
-# PENFCN_WEIGHTS = {"density" : 10.0, "excited states" : 1.0, "ground state" : 1.0, "states" : 0.0}
+PENFCN_WEIGHTS = {"density" : 10.0, "excited states" : 1.0, "ground state" : 1.0, "states" : 0.0}
 
 # Build training data set
 # True  = Evaluate F(x) for every set of x and build training.dat file
 # False = Create input files for every set of x, but do not evaluate
-#BUILD_TRAINING_SET = True
+BUILD_TRAINING_SET = True
 
 # Initial training data set size
-#INIT_DATA_SIZE = 30
+INIT_DATA_SIZE = 30
 
 # Build testing data set
-#BUILD_TESTING_SET = True
+BUILD_TESTING_SET = True
 
 # Size of testing data set
-#TEST_DATA_SIZE = 3
+TEST_DATA_SIZE = 3
 
 # Compute penalty function in parallel
-#PARALLEL = "n"
+PARALLEL = "n"
+
+# Use inverse of X (1/X)
+USE_XINV = False
+
+#######################################################################
+### GLOBAL VAR FROM INPUT ###
+
 
 # Number of OMP Threads
 NTHREADS = os.getenv("OMP_NUM_THREADS")
@@ -153,8 +159,60 @@ def create_qchem_file(molec, var):
 
     input_file.close()
 
+#
+# create_pjob_shell_script: Create a shell script to execute jobs in
+# parallel
+#
+def create_pjob_shell_script(fname):
 
 
+    shell_file = open(fname, "w")
+
+    PCTHREADS = int(NTHREADS) // 2 # Only two jobs in parallel
+    
+    shell_file.write("#!/bin/bash\n")
+
+    # First system
+    mname = MOLEC_SYS[0][0]
+    shell_file.write("cd "+mname+"\n")
+    shell_file.write("qchem -nt "+str(NTHREADS)+" "+mname+".input > "+mname+".output\n")
+    shell_file.write("cd ../\n")
+
+    # Parallel systems
+    mname = MOLEC_SYS[1][0]
+    shell_file.write("cd "+mname+"\n")
+    shell_file.write("qchem -nt "+str(PCTHREADS)+" "+mname+".input > "+mname+".output &\n")
+    shell_file.write("cd ../\n")
+    mname = MOLEC_SYS[2][0]
+    shell_file.write("cd "+mname+"\n")
+    shell_file.write("qchem -nt "+str(PCTHREADS)+" "+mname+".input > "+mname+".output &\n")
+    shell_file.write("cd ../\n")
+
+    shell_file.write("wait\n")
+
+    # After jobs finish, extract density information and copy output files to parent directory
+    for i in range(len(MOLEC_SYS)):
+        mname = MOLEC_SYS[i][0]
+        cjtype= MOLEC_SYS[i][2]
+        shell_file.write("cd "+mname+"\n")
+
+        # Compute density and copy to parent directory
+        cdxz_prog = PROGRAM_HOME+"/bin/cubedata_into_training_data.x"
+        cdxz_cmdl = cdxz_prog+" den_p_0.cube "+str(cjtype)+" > "+mname+"_dens.data"    
+        shell_file.write(cdxz_cmdl+"\n")
+        shell_file.write("cp "+mname+"_dens.data ../\n")
+        
+        # Copy output file to parent directory
+        shell_file.write("cp "+mname+".output ../\n")
+
+        # Leave directory, returning to parent directory
+        shell_file.write("cd ../\n")
+        
+    shell_file.close()
+
+    # Make executable
+    command_line("chmod +x "+fname)
+    
 #
 # generate_initial_dataset: Generate an initial set of training
 # data. This will be properties from QChem jobs for different
@@ -265,7 +323,8 @@ def generate_testing_dataset(test_data_size, num_param):
 #  gp = GP object
 #  X  = parameters
 def gp_objfcn(X, gp):
-    #Xinv = np.divide(1, X)
+    if (USE_XINV):
+        Xinv = np.divide(1, X)
     y_pred, sigma = gp.predict(np.atleast_2d(X), return_std=True)
     return y_pred
 
@@ -302,9 +361,13 @@ def kernel_user():
 def objective_function_value(var):
 
     # Compute QChem job with values and extract densities and states
-    for i in range(len(MOLEC_SYS)):
-        qchem_job(var, MOLEC_SYS[i][0], MOLEC_SYS[i][2], MOLEC_SYS[i][3])
-        
+    if (PARALLEL == "n"):
+        for i in range(len(MOLEC_SYS)):
+            qchem_job(var, MOLEC_SYS[i][0], MOLEC_SYS[i][2], MOLEC_SYS[i][3])
+    else:
+        qchem_pjobs(var)
+    
+            
     wt = PENFCN_WEIGHTS
     val = 0.0
     val = val + wt["density"] * objective_function_value_density(var)
@@ -598,10 +661,11 @@ def qchem_job(var, molec, cjobtype, nstates):
     # After this, get energy information and save it to '*_states.data'
     create_qchem_file(molec, var)
     create_nbox_files(molec)
+
     command_line("qchem -nt "+str(NTHREADS)+" "+molec+".input > "+molec+".output")
     cdxz_prog = PROGRAM_HOME+"/bin/cubedata_into_training_data.x"
     command_line(cdxz_prog+" den_p_0.cube "+str(cjobtype)+" > "+molec+"_dens.data")    
-    
+
 
     qfile = open(molec+".output", "r")
     qf_lines = (qfile.read().splitlines())
@@ -628,7 +692,65 @@ def qchem_job(var, molec, cjobtype, nstates):
 
     # Save logs
     command_line("cat "+molec+".output >> qc."+molec+".log")
-    
+
+#
+# qchem_pjobs: Run QChem jobs in parallel (for last two systems)
+#
+# Input:
+#  var = basis set parameters
+#
+def qchem_pjobs(var):
+
+    # Create shell script
+    fname = "pjob_submit.sh"
+    create_pjob_shell_script(fname)
+
+    # Create directories for each molecular system
+    for i in range(len(MOLEC_SYS)):
+        create_qchem_file(MOLEC_SYS[i][0], var)
+        create_nbox_files(MOLEC_SYS[i][0])
+
+        # Copy files into directory
+        command_line("mkdir -p "+MOLEC_SYS[i][0])
+        command_line("cp "+MOLEC_SYS[i][0]+".input "+MOLEC_SYS[i][0]+"/")
+        command_line("cp nbox_*.txt "+MOLEC_SYS[i][0]+"/")
+
+    # Execute pjob shell script
+    command_line("./pjob_submit.sh")
+
+    # Get data from each molecule
+    for i in range(len(MOLEC_SYS)):
+        molec = MOLEC_SYS[i][0]
+        qfile = open(molec+".output", "r")
+        qf_lines = (qfile.read().splitlines())
+        qfile.close()
+        nlines = len(qf_lines)
+        estart_line = 0
+        for j in range(nlines):
+            # Loop through qchem output file to find the Final CI Energy
+            if "==== Final CI Energy ====" in str(qf_lines[j]):
+                estart_line = j
+                break
+
+        estart_line = estart_line + 1 # Adjust for first entry
+        # Now read data for each state
+        energy = []
+        nstates = MOLEC_SYS[i][3]
+        for j in range(nstates):
+            e_line = qf_lines[estart_line + j]
+            e_line = e_line.replace(" CI Energy (au) Root #   "+str(j),"").strip()
+            energy.append(e_line)
+                
+        efile = open(molec+"_states.data", "w")
+        for j in range(nstates):
+            efile.write("%s\n" % energy[j])
+
+        efile.close()
+
+        # Save logs
+        command_line("cat "+molec+".output >> qc."+molec+".log")
+        
+
 #
 # save_var_to_indexed_file: Save the current coefficients to a file.
 # This routine is used for processing inputs that were submitted as batch jobs
@@ -714,13 +836,19 @@ def train_gp_and_return_opt(var, result):
     result_file = open("result",  "w")
     print("Training GP model")
     gp = GaussianProcessRegressor(kernel = k, n_restarts_optimizer = 12)
-    gp.fit(np.atleast_2d(X), Y)
-    #gp.fit(np.atleast_2d(Xinv), Y)
+    if not (USE_XINV):
+        gp.fit(np.atleast_2d(X), Y)
+    else:
+        gp.fit(np.atleast_2d(Xinv), Y)
+    
     print("Log-marginal-likelihood (GP): %.3f" % gp.log_marginal_likelihood(gp.kernel_.theta))
     
     print("Prediction with GP model")
-    y_pred, sigma = gp_prediction(gp, Xt)
-    #y_pred, sigma = gp_prediction(gp, Xtinv)
+    if not (USE_XINV):
+        y_pred, sigma = gp_prediction(gp, Xt)
+    else:
+        y_pred, sigma = gp_prediction(gp, Xtinv)
+    
     ygp = np.column_stack((Yt, y_pred, sigma))
     dpred = np.column_stack((Xt, ygp))
     print("Save predicted points")
@@ -745,11 +873,14 @@ def train_gp_and_return_opt(var, result):
         bnds = get_param_bounds()
 
         minimizer = {"method": "SLSQP", "args":gp,"bounds":bnds}
-        res = basinhopping(gp_objfcn,X[sg[j],:],minimizer_kwargs=minimizer,niter=10000)
+        res = basinhopping(gp_objfcn,X[sg[j],:],minimizer_kwargs=minimizer,niter=100000)
         for i in range(NUM_PARAM):
             var_loc[NUM_PARAM*j+i] = res.x[i]
-            #X[0,i] = np.divide(1,res.x[i])
-            X[0,i] = res.x[i]
+            if (USE_XINV):
+                X[0,i] = np.divide(1,res.x[i])
+            else:
+                X[0,i] = res.x[i]
+                
             out, sigma = gp_prediction(gp,X[0,:])
             res_loc[j]=out[0]
             
