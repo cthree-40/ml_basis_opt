@@ -96,6 +96,12 @@ PARALLEL = "n"
 # Use inverse of X (1/X)
 USE_XINV = False
 
+# Enforce linear independence by ensuring coefficients are separated by
+# linind_coeftol amount. Sets P(x) = LININD_PFCNVAL 
+ENFORCE_LININD = False
+LININD_COEFTOL = 0.5
+LININD_PFCNVAL = 30000
+
 #######################################################################
 ### GLOBAL VAR FROM INPUT ###
 
@@ -105,7 +111,20 @@ NTHREADS = os.getenv("OMP_NUM_THREADS")
 #---------------------------------------------------------------------
 
 
+# check_linind: Check linear independence of functions
+# Returns:
+#  False = functions could be linearly independent
+#  True  = functions could be linearly dependent
+def check_linind(X):
 
+    # Loop over paramters. If parameters are of same species check
+    # if paramters are separated by at least LININD_COEFTOL.
+    for i in range(NUM_PARAM - 1):
+        if ORBITAL_TYPE[i] == ORBITAL_TYPE[i+1]:
+            if abs(X[i] - X[i+1]) < LININD_COEFTOL:
+                return True
+    
+    return False
 
 
 #
@@ -323,6 +342,8 @@ def generate_testing_dataset(test_data_size, num_param):
 #  gp = GP object
 #  X  = parameters
 def gp_objfcn(X, gp):
+    if (check_linind(X)):
+        y_pred = LININD_PFCNVAL
     if (USE_XINV):
         Xinv = np.divide(1, X)
     y_pred, sigma = gp.predict(np.atleast_2d(X), return_std=True)
