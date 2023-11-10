@@ -42,7 +42,7 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_ba
 #  gen_testing:  Generate testing input files for batch submission
 #  run_gpr:      Run GPR
 #  all:          Do all three
-JOBTYPE = run_gpr
+JOBTYPE = "run_gpr"
 
 # Build the surface, or just return parameters
 BUILD_SURFACE = True
