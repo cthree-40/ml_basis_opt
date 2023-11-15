@@ -162,7 +162,10 @@ contains
 
     open(unit=flunit, file=trim(adjustl(flname)), action="read", &
         status="unknown", position="rewind", iostat=ios)
-    if (ios .ne. 0) stop "*** Can not open density file. ***"
+    if (ios .ne. 0) then
+        print "(A,A)", "Error opening file: ", trim(adjustl(flname))
+        stop "*** Can't open density file. ***"
+    end if
     do i = 1, npts
         read(flunit,fmt="(20X,F20.8)") dens(i)
     end do

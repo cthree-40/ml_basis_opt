@@ -911,10 +911,13 @@ def train_gp_and_return_opt(var, result):
     print("\n")
 
     # Find lowest minimum
-    min_val = 100000.0
+    min_val = 1000000.0
     min_idx = 0
     for j in range(nsearch):
-        if (res_loc[j] < min_val):
+        # We ignore points where GPR predicts 0.0 because they are
+        # likely at outer edge of range, and these are not likely
+        # to be points of interest
+        if (res_loc[j] < min_val and res_loc[j] > 0.0):
             min_idx = j
             min_val = res_loc[j]
     

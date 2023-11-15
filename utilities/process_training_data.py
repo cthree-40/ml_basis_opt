@@ -6,8 +6,10 @@ def check_for_lindep(data, ns, np, nd, nf, ng, nh):
     nrows = data.shape[0]
     ncols = data.shape[1]
 
-    maxval = np.argmax(data[:,ncols-1])
+    maxval = data[numpy.argmax(data[:,ncols-1]),ncols-1]
 
+    print("Maximum y-value in data = "+str(maxval))
+    
     for pt in range(nrows):
 
         idx=0
