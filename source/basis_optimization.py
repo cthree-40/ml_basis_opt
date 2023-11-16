@@ -102,6 +102,10 @@ ENFORCE_LININD = False
 LININD_COEFTOL = 0.5
 LININD_PFCNVAL = 30000
 
+# Do not accept as predicted minima P(x) = 0.0 (i.e. holes) that may be
+# at edge of range.
+NOEDGE_MINIMA = False
+
 #######################################################################
 ### GLOBAL VAR FROM INPUT ###
 
@@ -915,6 +919,10 @@ def train_gp_and_return_opt(var, result):
     min_idx = 0
     for j in range(nsearch):
         if (res_loc[j] < min_val):
+            # if we are rejecting P(x) = 0.0 edge cases
+            if (NOEDGE_MINIMA and res_loc[j] <= 0.0001):
+                continue
+            
             min_idx = j
             min_val = res_loc[j]
     
