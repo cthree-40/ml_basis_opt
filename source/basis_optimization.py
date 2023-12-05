@@ -106,6 +106,13 @@ LININD_PFCNVAL = 30000
 # at edge of range.
 NOEDGE_MINIMA = False
 
+# Check P(x) function
+CHECK_PENFCN = False
+
+
+# Start one search from minimum of data set
+START_FROM_MIN = False
+
 #######################################################################
 ### GLOBAL VAR FROM INPUT ###
 
@@ -129,7 +136,6 @@ def check_linind(X):
                 return True
     
     return False
-
 
 #
 # command_line: Issue command to command line
@@ -392,8 +398,8 @@ def objective_function_value(var):
     else:
         qchem_pjobs(var)
     
-            
     wt = PENFCN_WEIGHTS
+    
     val = 0.0
     val = val + wt["density"] * objective_function_value_density(var)
     val = val + wt["excited states"] * objective_function_value_excited_states(var)
@@ -890,8 +896,11 @@ def train_gp_and_return_opt(var, result):
     xrows, xcols = X.shape
     # Starting points
     sg = np.random.randint(0, xrows, nsearch)
-    sg[0] = np.argmin(Y)
-    print(" Minimum in training data: "+str(sg[0])+" , "+str(Y[sg[0]]))
+    datamin = np.argmin(Y)
+    print(" Minimum in training data: "+str(datamin)+" , "+str(Y[datamin]))
+    if (START_FROM_MIN):
+        sg[0] = datamin
+        
     for j in range(nsearch):
         
         # Get lower/upper bounds for each parameter
@@ -965,6 +974,21 @@ if __name__ == "__main__":
         result = [0.0] * 1
         rmse = [0.0] * 1
 
+        # Check penalty function evaluation
+        if (CHECK_PENFCN):
+            X_test = np.loadtxt("training.dat", usecols=range(NUM_PARAM))
+            Y_test = np.loadtxt("training.dat", usecols=(NUM_PARAM,))
+            pt = np.random.randint(0, Y_test.shape)
+            test_val = [0.0] * 1
+            test_var = X_test[pt,0:NUM_PARAM].tolist()
+            test_val[0] = objective_function_value(test_var[0])
+            print("Penalty function test at point "+str(pt))
+            print("Parameters: "+str(test_var[0]))
+            print("  P(x) = %15.8f\n" % test_val[0])
+            print("  T(x) = %15.8f\n" % Y_test[pt])
+            print("\n")
+         
+        
         gpr_reliable = False
         iter = 1
         while (iter < MAX_ITER):

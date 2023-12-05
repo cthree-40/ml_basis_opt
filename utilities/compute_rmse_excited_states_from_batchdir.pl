@@ -52,7 +52,7 @@ for (my $i = 0; $i <= $#molec_sys; $i++) {
             my $diff = $qce[$i] - $ref[$i];
             $rmse = $rmse + ($diff * $diff);
         }
-        $rmse = $rmse / $nstate;
+        $rmse = $rmse / ($nstate - 1);
         $rmse = sqrt($rmse);
         
         # Add RMSE to RMSE_VAL
