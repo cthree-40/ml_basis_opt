@@ -1,6 +1,27 @@
 import sys, getopt
 import numpy
 
+def check_for_duplicates(data):
+
+    nrows = data.shape[0]
+    ncols = data.shape[1]
+
+    print("Checking for duplicates...\n")
+    count = 0
+    for pt1 in range(nrows - 2):
+        for pt2 in range(pt1 + 1, nrows - 1):
+            if (pt2 > nrows - 1):
+                break
+            d = numpy.linalg.norm(data[pt1,0:ncols-2]-data[pt2,0:ncols-2])
+            if d < 0.000001:
+                count = count + 1
+                data_tmp = numpy.delete(data, pt2, 0)
+                data = data_tmp # with removed row
+                nrows = data.shape[0]
+    print("  "+str(count)+" duplicates removed!\n")
+    return data
+                
+
 def check_for_lindep(data, ns, np, nd, nf, ng, nh):
 
     nrows = data.shape[0]
@@ -118,6 +139,9 @@ if __name__ == "__main__":
 
     # Check for linear dependencies
     check_for_lindep(data, ns, np, nd, nf, ng, nh)
+
+    # Check for duplicates
+    data = check_for_duplicates(data)
     
     # Save new training data
     fmtstr = ""

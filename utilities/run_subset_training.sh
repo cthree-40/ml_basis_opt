@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $# -eq 0]
+if [ $# -eq 0 ]
 then
     echo "Usage: run_subset_training.sh [number of subsets]"
     exit 1
