@@ -23,7 +23,7 @@ do
     cp ./* ${i}/
     cp training.dat_${i} ${i}/training.dat
     rm ${i}/training.dat_*
-    cp ${i}/training.dat ${i}/testing.dat
+    cp testing.dat ${i}/testing.dat
 
 done
 

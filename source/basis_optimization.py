@@ -7,6 +7,7 @@ import subprocess
 import shlex
 import numpy as np
 
+from sklearn import preprocessing
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import Matern, RBF, WhiteKernel,\
 	ConstantKernel as C,\
@@ -112,6 +113,9 @@ CHECK_PENFCN = False
 
 # Start one search from minimum of data set
 START_FROM_MIN = False
+
+# Scaling of P(x)
+YSCALE = 1.0
 
 #######################################################################
 ### GLOBAL VAR FROM INPUT ###
@@ -405,6 +409,7 @@ def objective_function_value(var):
     val = val + wt["excited states"] * objective_function_value_excited_states(var)
     val = val + wt["ground state"] * objective_function_value_zeropoint(var)
     val = val + wt["states"] * objective_function_value_all_states(var)
+    
     return val
 
 #
@@ -825,6 +830,9 @@ def train_gp_and_return_opt(var, result):
     
     Y  = np.loadtxt(training_data_file, usecols=(NUM_PARAM, ))
     Yt = np.loadtxt(testing_data_file,  usecols=(NUM_PARAM, ))
+    # Scale
+    Y = np.multiply(Y, YSCALE)
+    Yt = np.multiply(Yt, YSCALE)
     
     Xinv  = np.divide(1, X)
     Xtinv = np.divide(1, Xt)
@@ -866,13 +874,19 @@ def train_gp_and_return_opt(var, result):
     optdat_file = open("opt.dat", "w")
     result_file = open("result",  "w")
     print("Training GP model")
-    gp = GaussianProcessRegressor(kernel = k, n_restarts_optimizer = 12)
+    gp = GaussianProcessRegressor(kernel = k, n_restarts_optimizer = 12, normalize_y = True)
     if not (USE_XINV):
         gp.fit(np.atleast_2d(X), Y)
     else:
         gp.fit(np.atleast_2d(Xinv), Y)
     
     print("Log-marginal-likelihood (GP): %.3f" % gp.log_marginal_likelihood(gp.kernel_.theta))
+
+    f_coef = "coeff.dat"
+    np.savetxt(f_coef,gp.kernel_.theta,fmt="%.16f")
+    np.savetxt("k.dat",gp.L_,fmt="%.16f")
+    np.savetxt("alpha.dat",gp.alpha_,fmt="%.16f")
+
     
     print("Prediction with GP model")
     if not (USE_XINV):
@@ -907,7 +921,7 @@ def train_gp_and_return_opt(var, result):
         bnds = get_param_bounds()
 
         minimizer = {"method": "SLSQP", "args":gp,"bounds":bnds}
-        res = basinhopping(gp_objfcn,X[sg[j],:],minimizer_kwargs=minimizer,niter=100000)
+        res = basinhopping(gp_objfcn,X[sg[j],:],minimizer_kwargs=minimizer,niter=1000)
         for i in range(NUM_PARAM):
             var_loc[NUM_PARAM*j+i] = res.x[i]
             if (USE_XINV):
@@ -917,7 +931,11 @@ def train_gp_and_return_opt(var, result):
                 
             out, sigma = gp_prediction(gp,X[0,:])
             res_loc[j]=out[0]
-            
+
+    print(" Starting guesses:")
+    for j in range(nsearch):
+        print(" %10.8f" % Y[sg[j]], end="")
+    print("\n")
     print(" Minima:")
     for j in range(nsearch):
         print(" %10.8f" % res_loc[j], end="")
@@ -942,7 +960,7 @@ def train_gp_and_return_opt(var, result):
     
     # Return this minimum
     var[0:NUM_PARAM] = var_loc[(NUM_PARAM * min_idx):(NUM_PARAM * min_idx) + NUM_PARAM]
-    result[0] = res_loc[min_idx]
+    result[0] = res_loc[min_idx] * YSCALE
         
     print("--- %s seconds ---" % (time.time() - start_time))
 
