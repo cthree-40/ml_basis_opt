@@ -1055,10 +1055,10 @@ if __name__ == "__main__":
             fmtstr = fmtstr+" %10.8f"
             # save old training and testing data files
             command_line("cp training.dat training.dat_prev")
-            command_line("cp testing.dat testing.dat_prev")
+            #command_line("cp testing.dat testing.dat_prev")
             # save results
             np.savetxt(f_training, data, fmt=fmtstr)
-            np.savetxt(f_testing,  data, fmt=fmtstr)
+            #np.savetxt(f_testing,  data, fmt=fmtstr)
             
             # Increment
             iter = iter + 1

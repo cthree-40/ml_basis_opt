@@ -92,6 +92,42 @@ def get_arguments_from_cmdl(argv):
     return (int(sfcns), int(pfcns), int(dfcns),
             int(ffcns), int(gfcns), int(hfcns))
 
+def save_minimum(data, fname, ns, np, nd, nf, ng, nh):
+
+    nrows = data.shape[0]
+    ncols = data.shape[1]
+
+    minarg = numpy.argmin(data[:,ncols-1])
+    minval = data[minarg,ncols-1]
+
+    print("Saving minimum parameters. Minimum value = "+str(minval)+"\n")
+
+    # Build string of angular momentum types
+    otype = []
+    for i in range(ns):
+        otype.append("S")
+    for i in range(np):
+        otype.append("P")
+    for i in range(nd):
+        otype.append("D")
+    for i in range(nf):
+        otype.append("F")
+    for i in range(ng):
+        otype.append("G")
+    for i in range(nh):
+        otype.append("H")
+
+    # Save this to file
+    f = open(fname, "w")
+    f.write("$neo_basis\nH    3\n")
+    for i in range(len(otype)):
+        f.write(str(otype[i])+"   1   1.0\n")
+        f.write(" %.5f    1.0000D+00\n" % data[minarg,i])
+    f.write("****\n$end\n")
+
+    f.close()
+    
+
 def sort_parameters(x, ns, np, nd, nf, ng, nh):
     if (ns > 1):
         start=0
@@ -142,6 +178,9 @@ if __name__ == "__main__":
 
     # Check for duplicates
     data = check_for_duplicates(data)
+
+    # Save minimum to file min.pbas.txt
+    save_minimum(data,"min.pbas.txt", ns, np, nd, nf, ng, nh)
     
     # Save new training data
     fmtstr = ""
