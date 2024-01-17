@@ -103,13 +103,15 @@ ENFORCE_LININD = False
 LININD_COEFTOL = 0.5
 LININD_PFCNVAL = 30000
 
-# Do not accept as predicted minima P(x) = 0.0 (i.e. holes) that may be
+# Do not accept as predicted minima P(x) < 0.0 (i.e. holes) that may be
 # at edge of range.
 NOEDGE_MINIMA = False
 
 # Check P(x) function
 CHECK_PENFCN = False
 
+# Global optimization searches
+NMIN_SEARCH = 5
 
 # Start one search from minimum of data set
 START_FROM_MIN = False
@@ -904,7 +906,7 @@ def train_gp_and_return_opt(var, result):
     sys.stdout.flush()
 
     # Optimization
-    nsearch = 5 # Number of guess searches
+    nsearch = NMIN_SEARCH # Number of guess searches
     var_loc = [0.0] * NUM_PARAM * nsearch
     res_loc = [0.0] * nsearch
     xrows, xcols = X.shape
