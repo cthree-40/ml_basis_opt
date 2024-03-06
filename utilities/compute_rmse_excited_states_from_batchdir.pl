@@ -32,13 +32,17 @@ for (my $i = 0; $i <= $#molec_sys; $i++) {
         my $npts  = $molec_sys[$i][1];
         my $nstate= $molec_sys[$i][3];
         
-        # Read in ground states. 
+        # Read in states. 
         open(FILE, "<", "${mname}_states.data");
         chomp(my @qce = <FILE>);
         close(FILE);
         open(FILE, "<", "${mname}_states.fgh.data");
         chomp(my @ref = <FILE>);
         close(FILE);
+
+        # adjust nstate value to number of states in *fgh.data file
+        $nstate = @ref;
+
         
         # Get excited states in cm-1
         for (my $i = 1; $i < $nstate; $i++) {

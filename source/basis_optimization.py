@@ -119,6 +119,9 @@ START_FROM_MIN = False
 # Scaling of P(x)
 YSCALE = 1.0
 
+# String for beginning of basis
+BASBEGINSTR="$neo_basis\nH    3\n"
+
 #######################################################################
 ### GLOBAL VAR FROM INPUT ###
 
@@ -186,7 +189,7 @@ def create_qchem_file(molec, var):
     command_line('''cp '''+deck_fname+''' '''+qcin_fname)
     input_file = open(qcin_fname, "a")
     
-    input_file.write("$neo_basis\nH    3\n")
+    input_file.write(BASBEGINSTR)
     for i in range(len(var)):
         input_file.write(str(ORBITAL_TYPE[i])+"   1   1.0\n")
         input_file.write(" %.5f   1.0000D+00\n" % var[i])

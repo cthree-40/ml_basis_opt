@@ -40,27 +40,27 @@ def check_for_lindep(data, ns, np, nd, nf, ng, nh):
 
         idx=0
         for i in range(ns - 1):
-            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 0.5:
+            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 1.0:
                 data[pt,ncols-1] = maxval
         idx=ns
         for i in range(np - 1):
-            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 0.5:
+            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 1.0:
                 data[pt,ncols-1] = maxval
         idx=ns+np
         for i in range(nd - 1):
-            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 0.5:
+            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 1.0:
                 data[pt,ncols-1] = maxval
         idx=ns+np+nd
         for i in range(nf - 1):
-            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 0.5:
+            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 1.0:
                 data[pt,ncols-1] = maxval
         idx=ns+np+nd+nf
         for i in range(ng - 1):
-            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 0.5:
+            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 1.0:
                 data[pt,ncols-1] = maxval
         idx=ns+np+nd+nf+ng
         for i in range(nh - 1):
-            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 0.5:
+            if abs(data[pt,idx+i] - data[pt,idx+i+1]) < 1.0:
                 data[pt,ncols-1] = maxval
         idx=ns+np+nd+nf+ng+nh
         

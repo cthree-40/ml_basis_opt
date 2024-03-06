@@ -40,6 +40,9 @@ for (my $i = 0; $i <= $#molec_sys; $i++) {
         chomp(my @ref = <FILE>);
         close(FILE);
 
+        # adjust nstate value to number of states in *fgh.data file
+        $nstate = @ref;
+        
         my $rmse = 0.0;
         # Compute RMSE
         for (my $i = 0; $i < $nstate; $i++) {
