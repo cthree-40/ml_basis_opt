@@ -174,7 +174,7 @@ if __name__ == "__main__":
     data = numpy.column_stack((X,Y))
 
     # Check for linear dependencies
-    check_for_lindep(data, ns, np, nd, nf, ng, nh)
+    #check_for_lindep(data, ns, np, nd, nf, ng, nh)
 
     # Check for duplicates
     data = check_for_duplicates(data)
