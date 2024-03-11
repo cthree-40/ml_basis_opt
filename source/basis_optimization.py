@@ -22,10 +22,6 @@ from scipy.optimize import minimize, rosen, rosen_der,shgo, differential_evoluti
 #---------------------------------------------------------------------
 
 
-# This is the directory containing source/ and bin/ and utilities/ for this
-# program.
-PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_basis_opt"
-
 #
 # To make this program a bit easier to use, and to not have to multiple copies
 # the code is designed to use with a shell scrip that will create the proper
@@ -37,6 +33,10 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_ba
 #
 # DEFAULT PARAMETERS ##############################################
 #
+
+# This is the directory containing source/ and bin/ and utilities/ for this
+# program.
+PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_basis_opt"
 
 # Jobtype for program execution
 #  gen_training: Generate training input files for batch submission
