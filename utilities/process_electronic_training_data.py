@@ -132,27 +132,27 @@ def sort_parameters(x, ns, np, nd, nf, ng, nh):
     if (ns > 1):
         start=0
         final=ns
-        x[start:final] = numpy.sort(x[start:final])
+        x[start:final] = numpy.flip(numpy.sort(x[start:final]), 0)
     if (np > 1):
         start=ns
         final=ns+np
-        x[start:final] = numpy.sort(x[start:final])
+        x[start:final] = numpy.flip(numpy.sort(x[start:final]), 0)
     if (nd > 1):
         start=ns+np
         final=ns+np+nd
-        x[start:final] = numpy.sort(x[start:final])
+        x[start:final] = numpy.flip(numpy.sort(x[start:final]), 0)
     if (nf > 1):
         start=ns+np+nd
         final=ns+np+nd+nf
-        x[start:final] = numpy.sort(x[start:final])
+        x[start:final] = numpy.flip(numpy.sort(x[start:final]), 0)
     if (ng > 1):
         start=ns+np+nd+nf
         final=ns+np+nd+nf+ng
-        x[start:final] = numpy.sort(x[start:final])
+        x[start:final] = numpy.flip(numpy.sort(x[start:final]), 0)
     if (nh > 1):
         start=ns+np+nd+nf+ng
         final=ns+np+nd+nf+ng+nh
-        x[start:final] = numpy.sort(x[start:final])
+        x[start:final] = numpy.flip(numpy.sort(x[start:final]), 0)
     
 
 if __name__ == "__main__":
@@ -172,9 +172,6 @@ if __name__ == "__main__":
 
     # Make new training data
     data = numpy.column_stack((X,Y))
-
-    # Check for linear dependencies
-    check_for_lindep(data, ns, np, nd, nf, ng, nh)
 
     # Check for duplicates
     data = check_for_duplicates(data)

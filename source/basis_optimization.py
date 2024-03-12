@@ -517,6 +517,9 @@ def objective_function_value_excited_states(var):
         name = MOLEC_SYS[i][0]
         nsts = MOLEC_SYS[i][3]
         nxst = nsts - 1
+
+        if (nxst == 0):
+            continue
         
         # Read in excited states. Arrive converted to cm-1
         xstates = get_excited_states_from_file(name+"_states.data", nxst)
@@ -537,7 +540,7 @@ def objective_function_value_excited_states(var):
         
     # Sum errors
     rmse_val = 0.0
-    for i in range(len(MOLEC_SYS)):
+    for i in range(len(rmse)):
         rmse_val = rmse_val + rmse[i]
 
     return rmse_val
