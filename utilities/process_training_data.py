@@ -8,16 +8,19 @@ def check_for_duplicates(data):
 
     print("Checking for duplicates...\n")
     count = 0
-    for pt1 in range(nrows - 2):
-        for pt2 in range(pt1 + 1, nrows - 1):
-            if (pt2 > nrows - 1):
-                break
+    pt1 = 0
+    while pt1 < nrows - 1:
+        pt2 = pt1 + 1
+        while pt2 < nrows:
             d = numpy.linalg.norm(data[pt1,0:ncols-2]-data[pt2,0:ncols-2])
-            if d < 0.000001:
+            if d < 0.001:
                 count = count + 1
                 data_tmp = numpy.delete(data, pt2, 0)
                 data = data_tmp # with removed row
                 nrows = data.shape[0]
+                pt2 = pt2 - 1
+            pt2 = pt2 + 1
+        pt1 = pt1 + 1
     print("  "+str(count)+" duplicates removed!\n")
     return data
                 
