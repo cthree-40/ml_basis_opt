@@ -19,16 +19,16 @@ if ( ! defined $w_den || ! defined $w_xst || ! defined $w_gst || ! defined $w_as
 }
 
 # Read in each RMSE value
-open(FILE, "<", "density.rmse.dat") or die "Could not open density.rmse.dat!\n";
+open(FILE, "<", "density.rmse.dat");# or die "Could not open density.rmse.dat!\n";
 chomp(my @dens_error = <FILE>);
 close(FILE);
-open(FILE, "<", "excited_states.rmse.dat") or die "Could not open excited_states.rmse.dat!\n";
+open(FILE, "<", "excited_states.rmse.dat");# or die "Could not open excited_states.rmse.dat!\n";
 chomp(my @xst_error = <FILE>);
 close(FILE);
-open(FILE, "<", "zero_point.rmse.dat") or die "Could not open zero_point.rmse.dat!\n";
+open(FILE, "<", "zero_point.rmse.dat");# or die "Could not open zero_point.rmse.dat!\n";
 chomp(my @gst_error = <FILE>);
 close(FILE);
-open(FILE, "<", "all_states.rmse.dat") or die "Could not open all_states.rmse.dat!\n";
+open(FILE, "<", "all_states.rmse.dat");# or die "Could not open all_states.rmse.dat!\n";
 chomp(my @ast_error = <FILE>);
 close(FILE);
 

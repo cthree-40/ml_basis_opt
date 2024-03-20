@@ -12,7 +12,7 @@ export OMP_SCHEDULE=dynamic
 #export OMP_PLACES=threads
 
 # Set up development qchem environment
-source /home/clm96/.qcdevsetup
+source ~/.qcdevsetup
 export QCTHREADS=$OMP_NUM_THREADS
 
 echo "Submitting BATCH dev-QCHEM job."
