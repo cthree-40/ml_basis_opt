@@ -24,10 +24,15 @@ def create_states_file(molec, nstates):
             estart_line = i
             break
     estart_line = estart_line + 1
+
     energy = []
     for i in range(nstates):
-        e_line = qf_lines[estart_line + i]
-        e_line = e_line.replace(" CI Energy (au) Root #   "+str(i),"").strip()
+        if (estart_line > 1):
+            e_line = qf_lines[estart_line + i]
+            e_line = e_line.replace(" CI Energy (au) Root #   "+str(i),"").strip()
+        else:
+            e_line = str(100 * i)
+            
         energy.append(e_line)
 
     efile = open(molec+"_states.data", "w")
