@@ -410,7 +410,9 @@ def objective_function_value(var):
     wt = PENFCN_WEIGHTS
     
     val = 0.0
-    val = val + wt["density"] * objective_function_value_density(var)
+    if (wt["density"] > 0.0):
+        val = val + wt["density"] * objective_function_value_density(var)
+
     val = val + wt["excited states"] * objective_function_value_excited_states(var)
     val = val + wt["ground state"] * objective_function_value_zeropoint(var)
     val = val + wt["states"] * objective_function_value_all_states(var)
