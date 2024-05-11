@@ -122,6 +122,9 @@ YSCALE = 1.0
 # String for beginning of basis
 BASBEGINSTR="$neo_basis\nH    3\n"
 
+# Build even tempered basis
+EVEN_TEMPERED_BASIS = False
+
 #######################################################################
 ### GLOBAL VAR FROM INPUT ###
 
