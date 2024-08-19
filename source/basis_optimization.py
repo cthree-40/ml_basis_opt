@@ -110,6 +110,9 @@ NOEDGE_MINIMA = False
 # Check P(x) function
 CHECK_PENFCN = False
 
+# Penalty function tolerance for convergence
+PF_TOL = 1.0
+
 # Global optimization searches
 NMIN_SEARCH = 5
 
@@ -124,6 +127,7 @@ BASBEGINSTR="$neo_basis\nH    3\n"
 
 # Build even tempered basis
 EVEN_TEMPERED_BASIS = False
+ET_BASIS_NUM_FCNS = [5, 4, 3, 2, 1]
 
 #######################################################################
 ### GLOBAL VAR FROM INPUT ###
@@ -193,11 +197,26 @@ def create_qchem_file(molec, var):
     input_file = open(qcin_fname, "a")
     
     input_file.write(BASBEGINSTR)
-    for i in range(len(var)):
-        input_file.write(str(ORBITAL_TYPE[i])+"   1   1.0\n")
-        input_file.write(" %.5f   1.0000D+00\n" % var[i])
-    input_file.write("****\n$end\n")
 
+    if EVEN_TEMPERED_BASIS == False:
+
+        for i in range(len(var)):
+            input_file.write(str(ORBITAL_TYPE[i])+"   1   1.0\n")
+            input_file.write(" %.5f   1.0000D+00\n" % var[i])
+
+    else:
+
+        vix = 0 # start var indexing, we will jump by two for each a,b pair
+        for i in range(len(ET_BASIS_NUM_FCNS)):
+            for j in range(ET_BASIS_NUM_FCNS[i]):
+                expcoef = var[vix]*math.pow(var[vix+1],j-1)
+                input_file.write(str(ORBITAL_TYPE[i])+"   1   1.0\n")
+                input_file.write(" %.5f   1.0000D+00\n" % expcoef)
+
+            vix = vix + 2 # increment to next a,b pair
+
+
+    input_file.write("****\n$end\n")        
     input_file.close()
 
 #
@@ -435,6 +454,11 @@ def objective_function_value(var):
 #  RMSE for all states
 #
 def objective_function_value_all_states(var):
+
+    if (PENFCN_WEIGHTS["states"] == 0.0):
+        val = 0.0
+        return val
+
     
     # Compute RMSE value for each system
     rmse = []
@@ -480,6 +504,10 @@ def objective_function_value_all_states(var):
 # Output:
 #  val = f(x,y,...,z)
 def objective_function_value_density(var):
+
+    if (PENFCN_WEIGHTS["density"] == 0.0):
+        val = 0.0
+        return val
     
     # Compute RMSE value for each system
     rmse_prog = PROGRAM_HOME+"/bin/compute_rmse_density.x"
@@ -514,6 +542,11 @@ def objective_function_value_density(var):
 #  RMSE for excited states
 #
 def objective_function_value_excited_states(var):
+
+    if (PENFCN_WEIGHTS["excited states"] == 0.0):
+        val = 0.0
+        return val
+
     
     # Compute RMSE value for each system
     rmse = []
@@ -559,6 +592,11 @@ def objective_function_value_excited_states(var):
 #  RMSE for zero point energy
 #
 def objective_function_value_zeropoint(var):
+
+    if (PENFCN_WEIGHTS["ground state"] == 0.0):
+        val = 0.0
+        return val
+
     
     rmse = []
     # Compute RMSE value fo each system
@@ -1038,7 +1076,7 @@ if __name__ == "__main__":
                 print("GP predicted minimum = %15.8f\n" % gpmin)
                 print("Computed minimum     = %15.8f\n" % result[0])
                 print("Difference           = %15.8f\n" % diff)
-                if ((abs(diff) < 1.0) and (gpmin < 100.0)):
+                if ((abs(diff) < PF_TOL) and (gpmin < 100.0)):
                     gpr_reliable = True
                     break
             else:

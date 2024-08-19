@@ -25,6 +25,13 @@ echo "Final directory: ${2}"
 
 for i in $( seq ${1} ${2} ); do
     cd $i
+
+    if [ -e "h_anion/h_anion.input" ]; then
+        cd h_anion
+        # Run QCHem
+        qchem -nt $OMP_NUM_THREADS h_anion.input > h_anion.output
+        cd ../
+    fi
     
     if [ -e "hehhe/hehhe.input" ]; then
         cd hehhe
