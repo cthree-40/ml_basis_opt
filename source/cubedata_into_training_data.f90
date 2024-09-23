@@ -10,17 +10,21 @@ program cubedata_into_training_data
   double precision, dimension(:,:), allocatable :: xdens
   double precision, dimension(:,:), allocatable :: ydens
   double precision, dimension(:,:), allocatable :: zdens
+  double precision, dimension(:,:), allocatable :: xyzdens
   
   double precision, dimension(:,:,:), allocatable :: cubedata
 
   
   integer :: cube_dim
+  integer :: xyz_dim
   integer, dimension(3) :: ndisps
   double precision, dimension(3) :: disp_size, start 
   
   character(255) :: cubefile_name, jobtype_name
   integer :: ios
-  integer :: i, jobtype
+  integer :: i, j, k
+  double precision :: xval, yval, zval
+  integer :: jobtype
   
   ! Process command line arguments
   call get_command_argument(number=1, value=cubefile_name, status=ios)
@@ -52,7 +56,7 @@ program cubedata_into_training_data
   call generate_densdata(cubedata, 1, start(1), ndisps(1), disp_size(1), xdens)
   call generate_densdata(cubedata, 2, start(2), ndisps(2), disp_size(2), ydens)
   call generate_densdata(cubedata, 3, start(3), ndisps(3), disp_size(3), zdens)
-  
+
   if (jobtype .eq. 1) then
       ! Print x density only
       do i = 2, ndisps(1)
@@ -78,7 +82,18 @@ program cubedata_into_training_data
       do i = 2, ndisps(1)
           print "(F20.5,F20.8)", zdens(1,i), zdens(2,i)
       end do
-
+  else if (jobtype .eq. 4) then
+      ! Print xyz density
+      do i = 2, ndisps(1) ! x
+          xval = start(1) + disp_size(1) * (i - 1)
+          do j = 2, ndisps(2) ! y
+              yval = start(2) + disp_size(2) * (j - 1)
+              do k = 2, ndisps(3) ! z
+                  zval = start(3) + disp_size(3) * (k - 1)
+                  print "(3F20.5,F20.8)", xval, yval, zval, cubedata(k, j, i)
+              end do
+          end do
+      end do
   else
       stop "*** Error: Invalid Job Type! ***"
   end if

@@ -1,0 +1,81 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Cwd qw(getcwd);
+
+#
+# Program to compute RMSE for a given set of parameters
+#
+
+#
+# Molecular systems
+#
+my @molec_sys = (["h_anion", 96, 3, 16], ["hcn", 96, 3, 4], ["hehhe", 96, 3, 4], ["fhf", 96, 3, 4]);
+
+
+# Ensure we have directories for each system
+for (my $i = 0; $i <= $#molec_sys; $i++) {
+    if (! -d $molec_sys[$i][0]) { print "No directory: $molec_sys[$i][0]!\n"};
+}
+
+my $rmse_val = 0.0;
+# Compute RMSE for each system
+for (my $i = 0; $i <= $#molec_sys; $i++) {
+
+    # Enter directory
+    if (-e "$molec_sys[$i][0]/$molec_sys[$i][0].input" ) {
+        chdir "$molec_sys[$i][0]";
+        my $mname = $molec_sys[$i][0];
+        my $jtype = $molec_sys[$i][2];
+        my $npts  = $molec_sys[$i][1];
+        my $nstate= $molec_sys[$i][3];
+        
+        # Read in states. 
+        open(FILE, "<", "${mname}_states.data") or die "File not found!: ${mname}_states.data";
+        chomp(my @qce = <FILE>);
+        close(FILE);
+        open(FILE, "<", "${mname}_states.fgh.data") or die "File not found!: ${mname}_states.fgh.data";
+        chomp(my @ref = <FILE>);
+        close(FILE);
+
+        # adjust nstate value to number of states in *fgh.data file
+        $nstate = @ref;
+
+        # compute averages
+        my $fgh_av = 0.0;
+        my $qce_av = 0.0;
+        for (my $i = 0; $i < $nstate; $i++) {
+            $fgh_av = $fgh_av + $ref[$i];
+            $qce_av = $qce_av + $qce[$i];
+        }
+        $fgh_av = $fgh_av / $nstate;
+        $qce_av = $qce_av / $nstate;
+
+        
+        my $diff = $fgh_av - $qce_av;
+        my $rmse = sqrt($diff*$diff); 
+
+        $rmse_val = $rmse_val + $rmse;
+            
+        # Leave directory
+        chdir "../";
+    }
+    #else
+    #{
+    #    print "WARNING: Directory not found! $molec_sys[$i][0]\n";
+    #}
+}
+
+# Read parameters
+open(FILE, "<", "var.dat") or die "Could not open file var.dat!\n";
+chomp(my @var = <FILE>);
+close(FILE);
+
+# Print final output
+open(FILE, ">", "av_states.rmse.dat") or die "Could not open file to write av_states.rmse.dat!\n";
+printf FILE " %15.8f\n", $rmse_val;
+close(FILE);
+
+ 

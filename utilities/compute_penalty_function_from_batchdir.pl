@@ -9,12 +9,12 @@ use Cwd qw(getcwd);
 # Program to compute penalty function
 #
 
-# F = w_1 * density + w_2 * excited states + w_3 * ZPE + w_4 * all states
+# F = w_1 * density + w_2 * excited states + w_3 * ZPE + w_4 * all states + w_5 * av of states
 #
 
 # Process command line arguments
-my ($w_den, $w_xst, $w_gst, $w_ast) = @ARGV;
-if ( ! defined $w_den || ! defined $w_xst || ! defined $w_gst || ! defined $w_ast ) {
+my ($w_den, $w_xst, $w_gst, $w_ast, $w_ave) = @ARGV;
+if ( ! defined $w_den || ! defined $w_xst || ! defined $w_gst || ! defined $w_ast || ! defined $w_ave ) {
     die "Please provide weights for function.\n";
 }
 
@@ -31,9 +31,12 @@ close(FILE);
 open(FILE, "<", "all_states.rmse.dat");# or die "Could not open all_states.rmse.dat!\n";
 chomp(my @ast_error = <FILE>);
 close(FILE);
+open(FILE, "<", "av_states.rmse.dat");
+chomp(my @ave_error = <FILE>);
+close(FILE);
 
 my $rmse_val = ($w_den * $dens_error[0] + $w_xst * $xst_error[0] + $w_gst * $gst_error[0] 
-                + $w_ast * $ast_error[0]);
+                + $w_ast * $ast_error[0] + $w_ave * $ave_error[0]);
 
 
 # Read parameters

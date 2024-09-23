@@ -144,6 +144,9 @@ NTHREADS = os.getenv("OMP_NUM_THREADS")
 #  True  = functions could be linearly dependent
 def check_linind(X):
 
+    if ENFORCE_LININD == False:
+        return False
+    
     # Loop over paramters. If parameters are of same species check
     # if paramters are separated by at least LININD_COEFTOL.
     for i in range(NUM_PARAM - 1):
@@ -209,7 +212,7 @@ def create_qchem_file(molec, var):
         vix = 0 # start var indexing, we will jump by two for each a,b pair
         for i in range(len(ET_BASIS_NUM_FCNS)):
             for j in range(ET_BASIS_NUM_FCNS[i]):
-                expcoef = var[vix]*math.pow(var[vix+1],j-1)
+                expcoef = var[vix]*math.pow(var[vix+1],j) # j = n-1 = 0 .. n-1
                 input_file.write(str(ORBITAL_TYPE[i])+"   1   1.0\n")
                 input_file.write(" %.5f   1.0000D+00\n" % expcoef)
 

@@ -29,7 +29,10 @@ def create_states_file(molec, nstates):
     for i in range(nstates):
         if (estart_line > 1):
             e_line = qf_lines[estart_line + i]
-            e_line = e_line.replace(" CI Energy (au) Root #   "+str(i),"").strip()
+            if (i < 10):
+                e_line = e_line.replace(" CI Energy (au) Root #   "+str(i),"").strip()
+            else:
+                e_line = e_line.replace(" CI Energy (au) Root #  "+str(i),"").strip()
         else:
             e_line = str(100 * i)
             

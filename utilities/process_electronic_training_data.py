@@ -13,7 +13,7 @@ def check_for_duplicates(data):
         pt2 = pt1 + 1
         while pt2 < nrows:
             d = numpy.linalg.norm(data[pt1,0:ncols-2]-data[pt2,0:ncols-2])
-            if d < 0.0001:
+            if d < 0.00001:
                 count = count + 1
                 data_tmp = numpy.delete(data, pt2, 0)
                 data = data_tmp # with removed row
@@ -104,30 +104,12 @@ def save_minimum(data, fname, ns, np, nd, nf, ng, nh):
     minval = data[minarg,ncols-1]
 
     print("Saving minimum parameters. Minimum value = "+str(minval)+"\n")
-
-    # Build string of angular momentum types
-    otype = []
-    for i in range(ns):
-        otype.append("S")
-    for i in range(np):
-        otype.append("P")
-    for i in range(nd):
-        otype.append("D")
-    for i in range(nf):
-        otype.append("F")
-    for i in range(ng):
-        otype.append("G")
-    for i in range(nh):
-        otype.append("H")
-
+    
     # Save this to file
     f = open(fname, "w")
-    f.write("$neo_basis\nH    3\n")
-    for i in range(len(otype)):
-        f.write(str(otype[i])+"   1   1.0\n")
-        f.write(" %.5f    1.0000D+00\n" % data[minarg,i])
-    f.write("****\n$end\n")
-
+    for i in range(ns):
+        f.write(" %.5f " % data[minarg,i])
+    f.write(" %10.8f\n" % minval)
     f.close()
     
 
@@ -170,8 +152,8 @@ if __name__ == "__main__":
     print("Y shape = "+str(Y.shape[0])+" x 1")
     
     # Sort parameters
-    for i in range(X.shape[0]):
-        sort_parameters(X[i,:], ns, np, nd, nf, ng, nh)
+    #for i in range(X.shape[0]):
+    #    sort_parameters(X[i,:], ns, np, nd, nf, ng, nh)
 
     # Make new training data
     data = numpy.column_stack((X,Y))

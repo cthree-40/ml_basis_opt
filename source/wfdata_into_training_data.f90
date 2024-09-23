@@ -5,8 +5,10 @@ program wfdata_into_xz_training_data
   double precision, dimension(:,:), allocatable :: xdens
   double precision, dimension(:,:), allocatable :: ydens
   double precision, dimension(:,:), allocatable :: zdens
-
+  double precision, dimension(:,:), allocatable :: xyzdens
+  
   double precision, dimension(:,:), allocatable :: xyzwf
+  
   
   integer, parameter :: data_dim = 32768 ! 32 * 32 * 32 entries
   integer, parameter :: cube_dim = 32
@@ -38,6 +40,11 @@ program wfdata_into_xz_training_data
   call get_axis_dens(xyzwf, data_dim, xdens, cube_dim, 1)
   call get_axis_dens(xyzwf, data_dim, ydens, cube_dim, 2)
   call get_axis_dens(xyzwf, data_dim, zdens, cube_dim, 3)
+
+  allocate(xyzdens(4, data_dim))
+  if (jobtype .eq. 4) then
+      call get_xyz_dens(xyzwf, data_dim, xyzdens)
+  end if
   
   if (jobtype .eq. 1) then
       ! Print x density only
@@ -64,7 +71,11 @@ program wfdata_into_xz_training_data
       do i = 1, cube_dim
           print "(F20.5,F20.8)", zdens(1,i), zdens(2,i)
       end do
-
+  else if (jobtype .eq. 4) then
+      ! Print density
+      do i = 1, data_dim
+          print "(3F20.5,F20.8)", xyzdens(1:3,i), xyzdens(4,i)
+      end do
   else
       stop "*** Error: Invalid Job Type! ***"
   end if
@@ -115,6 +126,33 @@ contains
     end do
     
   end subroutine get_axis_dens
+
+  ! Get density for all elements
+  subroutine get_xyz_dens(xyz_wf, xyz_dim, xyz_dens)
+
+    implicit none
+
+    integer, intent(in) :: xyz_dim
+    double precision, dimension(4, xyz_dim), intent(in) :: xyz_wf
+    double precision, dimension(4, xyz_dim), intent(out):: xyz_dens
+
+    double precision :: vol
+
+    integer :: i, j
+
+    ! Compute volume
+    vol = (xyz_wf(3,2) - xyz_wf(3,1)) / 0.529177
+    vol = vol * vol * vol
+
+    do i = 1, xyz_dim
+        do j = 1, 3
+            xyz_dens(j, i) = xyz_wf(j, i) / 0.529177 ! convert to bohr
+        end do
+        xyz_dens(4, i) = xyz_wf(4, i) * xyz_wf(4, i) / vol ! density
+    end do
+    
+    
+  end subroutine get_xyz_dens
 
   ! Read in xyz WF data
   subroutine read_xyz_wf(wf_file, xyz_wf, dim)
