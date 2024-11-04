@@ -20,11 +20,12 @@ program cubedata_into_training_data
   integer, dimension(3) :: ndisps
   double precision, dimension(3) :: disp_size, start 
   
-  character(255) :: cubefile_name, jobtype_name
+  character(255) :: cubefile_name, jobtype_name, xydisp_name
   integer :: ios
   integer :: i, j, k
   double precision :: xval, yval, zval
   integer :: jobtype
+  integer :: xy_disp
   
   ! Process command line arguments
   call get_command_argument(number=1, value=cubefile_name, status=ios)
@@ -39,7 +40,12 @@ program cubedata_into_training_data
   else      
       read(jobtype_name, "(I3)") jobtype
   end if
-
+  call get_command_argument(number=3, value=xydisp_name, status=ios)
+  if (ios .ne. 0) then
+      xy_disp = 0
+  else
+      read(xydisp_name, "(I3)") xy_disp
+  end if
 
   call read_cubefile_header(cubefile_name, cube_dim, ndisps, disp_size, start)
   
@@ -53,9 +59,9 @@ program cubedata_into_training_data
   allocate(xdens(2, ndisps(1)))
   allocate(ydens(2, ndisps(2)))
   allocate(zdens(2, ndisps(3)))
-  call generate_densdata(cubedata, 1, start(1), ndisps(1), disp_size(1), xdens)
-  call generate_densdata(cubedata, 2, start(2), ndisps(2), disp_size(2), ydens)
-  call generate_densdata(cubedata, 3, start(3), ndisps(3), disp_size(3), zdens)
+  call generate_densdata(cubedata, 1, start(1), ndisps(1), disp_size(1), xdens, xy_disp)
+  call generate_densdata(cubedata, 2, start(2), ndisps(2), disp_size(2), ydens, xy_disp)
+  call generate_densdata(cubedata, 3, start(3), ndisps(3), disp_size(3), zdens, 0)
 
   if (jobtype .eq. 1) then
       ! Print x density only
@@ -101,12 +107,13 @@ program cubedata_into_training_data
 contains
   
   ! Generate density data along some specified axis (1, 2, or 3)
-  subroutine generate_densdata(cubedata, axis, start, ndisps, disp_size, dens)
+  subroutine generate_densdata(cubedata, axis, start, ndisps, disp_size, dens, zdisp)
     
     implicit none
     
     integer, intent(in) :: axis
     integer, intent(in) :: ndisps
+    integer, intent(in) :: zdisp
     double precision, dimension(ndisps, ndisps, ndisps), intent(in) :: cubedata
     double precision, intent(in) :: start, disp_size
 
@@ -114,7 +121,7 @@ contains
     
     integer :: i, mid
 
-    mid = (ndisps + 1) / 2
+    mid = (ndisps + 1) / 2 + zdisp
 
     do i = 1, ndisps
         dens(1, i) = start + disp_size * (i - 1)
