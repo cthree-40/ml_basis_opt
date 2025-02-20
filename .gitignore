@@ -1,1 +1,3 @@
 bin/*.x
+bin/*
+source/*.x

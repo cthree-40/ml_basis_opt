@@ -4,6 +4,8 @@
 #SBATCH --time=1:00:00
 #SBATCH --nodes=1 --ntasks=1 --cpus-per-task=24
 #SBATCH --mem=150GB
+#SBATCH --partition=compute
+#SBATCH --account=uic317
 
 # Set necessary environmental variables
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
@@ -23,42 +25,33 @@ echo "OMP_SCHEDULE = $OMP_SCHEDULE"
 echo "Start directory: ${1}"
 echo "Final directory: ${2}"
 
+molec=("h2_0.74" "h_anion" "hehhe" "hcn" "hnc" "fhf")
+
 for i in $( seq ${1} ${2} ); do
     cd $i
 
-    if [ -e "h_anion/h_anion.input" ]; then
-        cd h_anion
-        # Run QCHem
-        qchem -nt $OMP_NUM_THREADS h_anion.input > h_anion.output
-        cd ../
-    fi
-    
-    if [ -e "hehhe/hehhe.input" ]; then
-        cd hehhe
-        cp hehhe.nbox_npts.txt nbox_npts.txt
-        cp hehhe.nbox_data.txt nbox_data.txt
-        # Run QChem
-        qchem -nt $OMP_NUM_THREADS hehhe.input > hehhe.output
-        cd ../
-    fi
+    # Loop over molecular systems
+    for sys in "${molec[@]}"; do
 
-    if [ -e "hcn/hcn.input" ]; then
-        cd hcn
-        cp hcn.nbox_npts.txt nbox_npts.txt
-        cp hcn.nbox_data.txt nbox_data.txt
-        # Run QChem
-        qchem -nt $OMP_NUM_THREADS hcn.input > hcn.output
-    cd ../
-    fi
+	# If the input was created for this system, run Qchem
+	if [ -e "${sys}/${sys}.input" ]; then
 
-    if [ -e "fhf/fhf.input" ]; then
-        cd fhf
-        cp fhf.nbox_npts.txt nbox_npts.txt
-        cp fhf.nbox_data.txt nbox_data.txt
-        # Run QChem
-        qchem -nt $OMP_NUM_THREADS fhf.input > fhf.output
+	    # Copy nbox files to directory
+	    if [ -e "../${sys}.nbox_data" ]; then
+		cp ${sys}.nbox_data ${sys}/
+		cp ${sys}.nbox_npts ${sys}/
+	    fi
+
+	    cd ${sys}
+
+            # Run QCHem
+            qchem -nt $OMP_NUM_THREADS ${sys}.input > ${sys}.output
+            cd ../
+	    
+	fi
+	
+    done
+
     cd ../
-    fi
     
-    cd ../
 done
