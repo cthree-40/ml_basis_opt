@@ -39,10 +39,11 @@ from scipy.optimize import minimize, rosen, rosen_der,shgo, differential_evoluti
 PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_basis_opt"
 
 # Jobtype for program execution
-#  gen_training: Generate training input files for batch submission
-#  gen_testing:  Generate testing input files for batch submission
-#  run_gpr:      Run GPR
-#  all:          Do all three
+#  gen_training:     Generate training input files for batch submission
+#  gen_testing:      Generate testing input files for batch submission
+#  collect_training: Collect training info from directories
+#  run_gpr:          Run GPR
+#  all:              gen_training, gen_testing, (collect_training), run_gpr
 JOBTYPE = "run_gpr"
 
 # Build the surface, or just return parameters
@@ -75,7 +76,12 @@ PBOUNDS = [(0.01, 20.0), (0.01, 50.0)]
 ORBITAL_TYPE = ["S","S"]
 
 # Penalty function weights
-PENFCN_WEIGHTS = {"density" : 10.0, "excited states" : 1.0, "ground state" : 1.0, "states" : 0.0}
+PENFCN_WEIGHTS = {"density" : 10.0, "excited states" : 1.0, "ground state" : 1.0, "states" : 0.0, "protonic energy" : 0.0}
+
+# Minimize absolute energes (relevant for ground state, states, and protonic energy)
+# This doesnt use a benchmark file but aims to just minimize the aboslute energy
+# It applies to all selected properties
+MINIMIZE_ABSE = True
 
 # Build training data set
 # True  = Evaluate F(x) for every set of x and build training.dat file
@@ -129,6 +135,9 @@ BASBEGINSTR="$neo_basis\nH    3\n"
 EVEN_TEMPERED_BASIS = False
 ET_BASIS_NUM_FCNS = [5, 4, 3, 2, 1]
 
+# Build directories (relevant for training generation)
+MAKE_TRAINING_DIRS = False
+
 #######################################################################
 ### GLOBAL VAR FROM INPUT ###
 
@@ -136,6 +145,24 @@ ET_BASIS_NUM_FCNS = [5, 4, 3, 2, 1]
 # Number of OMP Threads
 NTHREADS = os.getenv("OMP_NUM_THREADS")
 #---------------------------------------------------------------------
+
+#
+# check_for_error: Check if error occured in QChem job.
+# Input:
+#  flname = Name of QChem file
+# Returns:
+#  eflag = Error occurred (1) or not (0)
+def check_for_error(flname):
+    qfile = open(flname,"r")
+    qf_lines = (qfile.read().splitlines())
+    qfile.close()
+    nlines = len(qf_lines)
+    eflag = 0
+    for i in range(nlines):
+        if "Error: in the serial run" in str(qf_lines[i]):
+            eflag = 1
+            break
+    return eflag
 
 
 # check_linind: Check linear independence of functions
@@ -157,6 +184,61 @@ def check_linind(X):
     return False
 
 #
+# collect_training_dataset: Collect training data from subdirectories
+# Input:
+#  data_size = Number of training points
+#  num_param = Number of parameters
+def collect_training_dataset(data_size, num_param):
+
+    # Get current working directory
+    curr_dir = os.getcwd()
+
+    # See if all directories exist
+    for i in range(data_size):
+        if not os.path.exists(curr_dir+"/"+str(i)):
+            print("Could not find directory: "+str(i)+"\n")
+            return
+
+    # Collect parameter data from each directory
+    X = np.array([]).reshape(0,num_param)
+    # Collect penalty function results from each directory
+    Y = np.array([]).reshape(0)
+    for i in range(data_size):
+        # error check
+        eflag = 0
+        for j in range(len(MOLEC_SYS)):
+            eflag = eflag + check_for_error(curr_dir+"/"+str(i)+"/"+MOLEC_SYS[j][0]+"/"+MOLEC_SYS[j][0]+".output")
+        if (eflag > 0):
+            continue
+        # Collect data
+        # Parameters
+        vari = np.loadtxt(curr_dir+"/"+str(i)+"/var."+str(i),usecols=range(num_param))
+        X = np.vstack((X, vari))
+        # Objective function
+        idata_dir = curr_dir+"/"+str(i)+"/all"
+        os.makedirs(idata_dir, exist_ok=True)
+        for j in range(len(MOLEC_SYS)):
+            # Change to the molecular system directory
+            os.chdir(curr_dir+"/"+str(i)+"/"+MOLEC_SYS[j][0])
+            process_qchem_job(MOLEC_SYS[j][0], PENFCN_WEIGHTS, MOLEC_SYS[j][3])
+            # Copy processed files to data directory (where objective function is eval)
+            command_line("cp "+MOLEC_SYS[j][0]+"* "+idata_dir)
+        # Compute objective function
+        os.chdir(idata_dir)
+        val = np.array([compute_objective_function_in_dir()])
+        Y = np.concatenate((Y, val), axis=0)
+        
+    # Save training data
+    os.chdir(curr_dir)
+    data = np.column_stack((X,Y))
+    fmtstr = ""
+    for i in range(NUM_PARAM):
+        fmtstr=fmtstr+" %10.5f"
+    fmtstr=fmtstr+" %12.8f"
+    np.savetxt("training.dat", data, fmt=fmtstr)
+        
+
+#
 # command_line: Issue command to command line
 # Input:
 #  command = command line as string
@@ -168,7 +250,33 @@ def command_line(command):
     (output, err) = p.communicate()
     print (output)
     return output
+
+#
+# compute_objective_function_in_dir: compute the objective function based
+# on files in current directory
+# Output:
+#  objective function value
+#
+def compute_objective_function_in_dir():
+
+    wt = PENFCN_WEIGHTS
+    val = 0.0;
+
+    tmp = 0.0;
     
+    if (wt["density"] > 0.0):
+        val = val + wt["density"] * objective_function_value_density(tmp)
+    if (wt["excited states"] > 0.0):
+        val = val + wt["excited states"] * objective_function_value_excited_states(tmp)
+    if (wt["ground state"] > 0.0):
+        val = val + wt["ground state"] * objective_function_value_groundstate(tmp)
+    if (wt["states"] > 0.0):
+        val = val + wt["states"] * objective_function_value_all_states(tmp)
+    if (wt["protonic energy"] > 0.0):
+        val = val
+
+    return val
+
 #
 # create_nbox_files: Create the nbox_data.txt and nbox_npts.txt files the
 # given molecule
@@ -323,6 +431,17 @@ def generate_initial_dataset(init_data_size, num_param, run):
                 command_line("cp "+MOLEC_SYS[j][0]+".input "+MOLEC_SYS[j][0]+".input."+str(i))
         
 
+    # Place inputs in directories
+    if (MAKE_TRAINING_DIRS):
+        if not (run):
+            for i in range(init_data_size):
+                command_line("mkdir "+str(i))
+                command_line("mv "+"var."+str(i)+" "+str(i))
+                for j in range(len(MOLEC_SYS)):
+                    command_line("mkdir "+str(i)+"/"+MOLEC_SYS[j][0])
+                    command_line("mv "+MOLEC_SYS[j][0]+".input."+str(i)+" "+str(i)+"/"+MOLEC_SYS[j][0]+"/"+MOLEC_SYS[j][0]+".input")
+    
+                    
     # If all we require is inputs, leave
     if not (run):
         return
@@ -439,7 +558,7 @@ def objective_function_value(var):
         val = val + wt["density"] * objective_function_value_density(var)
 
     val = val + wt["excited states"] * objective_function_value_excited_states(var)
-    val = val + wt["ground state"] * objective_function_value_zeropoint(var)
+    val = val + wt["ground state"] * objective_function_value_groundstate(var)
     val = val + wt["states"] * objective_function_value_all_states(var)
     
     return val
@@ -472,20 +591,28 @@ def objective_function_value_all_states(var):
         
         # Read in excited states. Arrive converted in au
         states = get_all_states_from_file(name+"_states.data", nsts)
-        # Read in reference excited states. Arrive converted to au
-        ref_st = get_all_states_from_file(name+"_states.fgh.data", nsts)
 
-        # Compute RMSE
-        val = 0.0
-        for i in range(nsts):
+        if (MINIMIZE_ABSE == False):
+            # Read in reference excited states. Arrive converted to au
+            ref_st = get_all_states_from_file(name+"_states.benchmark.data", nsts)
             
-            diff = (states[i] - ref_st[i]) * 219474.63 # Convert to cm-1
-            
-            val = val + diff * diff
-
-        val = val / float(nsts)
-        val = math.sqrt(val)
-        rmse.append(val)
+            # Compute RMSE
+            val = 0.0
+            for i in range(nsts):
+                
+                diff = (states[i] - ref_st[i]) * 219474.63 # Convert to cm-1
+                
+                val = val + diff * diff
+                
+                val = val / float(nsts)
+                val = math.sqrt(val)
+                rmse.append(val)
+        else:
+            # Take weighted average of states
+            val = 0.0
+            for i in range(nsts):
+                val = val + states[i] / nsts
+            rmse.append(val)
         
     # Sum errors
     rmse_val = 0.0
@@ -565,7 +692,7 @@ def objective_function_value_excited_states(var):
         # Read in excited states. Arrive converted to cm-1
         xstates = get_excited_states_from_file(name+"_states.data", nxst)
         # Read in reference excited states. Arrive converted to cm-1
-        ref_xst = get_excited_states_from_file(name+"_states.fgh.data", nxst)
+        ref_xst = get_excited_states_from_file(name+"_states.benchmark.data", nxst)
 
         # Compute RMSE
         val = 0.0
@@ -587,14 +714,14 @@ def objective_function_value_excited_states(var):
     return rmse_val
 
 #
-# objective_function_value_zeropoint: Compute the RMSE for zero point 
+# objective_function_value_groundstate: Compute the RMSE for the ground state 
 # energy.
 # Input:
 #  var = parameter values
 # Output:
 #  RMSE for zero point energy
 #
-def objective_function_value_zeropoint(var):
+def objective_function_value_groundstate(var):
 
     if (PENFCN_WEIGHTS["ground state"] == 0.0):
         val = 0.0
@@ -604,20 +731,22 @@ def objective_function_value_zeropoint(var):
     rmse = []
     # Compute RMSE value fo each system
     for i in range(len(MOLEC_SYS)):
-        
         # Name of system
         name = MOLEC_SYS[i][0]
-        
         # Read in ground states. Arrive in au
         e0_qch = get_ground_state_from_file(name+"_states.data")
-        # Read in reference ground states. Arrive in au
-        e0_ref = get_ground_state_from_file(name+"_states.fgh.data")
 
-        # Get difference in au, and compute RMSE
-        val = (e0_qch - e0_ref)
-        val = val * val
-        val = math.sqrt(val)
-        rmse.append(val)
+        if (MINIMIZE_ABSE == False):
+            # Read in reference ground states. Arrive in au
+            e0_ref = get_ground_state_from_file(name+"_states.benchmark.data")
+            # Get difference in au, and compute RMSE
+            val = (e0_qch - e0_ref)
+            val = val * val
+            val = math.sqrt(val)
+            rmse.append(val)
+        else:
+            # Use absolute energy
+            rmse.append(e0_qch)
         
     # Sum errors
     rmse_val = 0.0
@@ -625,6 +754,51 @@ def objective_function_value_zeropoint(var):
         rmse_val = rmse_val + rmse[i]
 
     return rmse_val
+
+#
+# process_qchem_job: Create data from output of qchem job
+# for evaluation of penalty function
+# Input:
+#  molec = molecular system
+#  wt = objective function weights
+#  nstates = number of states
+def process_qchem_job(molec, wt, nstates):
+
+    # Get penalty function weights. This will inform what data
+    # should be created.
+    if (wt["density"] > 0.0):
+        if (os.path.exists("./nbox_data.txt") and os.path.exists("./nbox_npts.txt")):
+            cdxz_prog = PROGRAM_HOME+"/bin/cubedata_into_training.data.x"
+            command_line(cdxz_prog+" den_p_0.cube "+str(cjobtype)+" > "+molec+"_dens.data")
+        else:
+            print("Missing nbox files. Aborting!\n")
+            sys.exit(1)
+
+    if (wt["excited states"] > 0.0 or wt["ground state"] > 0.0 or wt["states"] > 0.0):
+        qfile = open(molec+".output","r")
+        qf_lines = (qfile.read().splitlines())
+        qfile.close()
+        nlines = len(qf_lines)
+        estart_line = 0
+        for i in range(nlines):
+            # Loop through qchem output file to find the Final CI Energy
+            if "==== Final CI Energy ====" in str(qf_lines[i]):
+                estart_line = i
+                break
+        estart_line = estart_line + 1 # Adjust for first entry
+        # Now read data for each state
+        energy = []
+        for i in range(nstates):
+            e_line = qf_lines[estart_line + i]
+            e_line = e_line.replace(" CI Energy (au) Root #   "+str(i),"").strip()
+            energy.append(e_line)
+
+        efile = open(molec+"_states.data", "w")
+        for i in range(nstates):
+            efile.write("%s\n" % energy[i])
+        efile.close()
+
+    
 
 #
 # get_all_states_from_file: Get state energies from
@@ -852,7 +1026,8 @@ def qchem_pjobs(var):
 def save_var_to_indexed_file(var, i):
     f = open("var."+str(i), "w")
     for j in range(NUM_PARAM):
-        f.write(" %.5f\n" % var[j])
+        f.write(" %.5f" % var[j])
+    f.write("\n")
     f.close()
 
 #
@@ -1038,8 +1213,11 @@ if __name__ == "__main__":
     # Generate test data set
     if (JOBTYPE == "gen_testing" or JOBTYPE == "all" or JOBTYPE == "run_gpr"):
         generate_testing_dataset(TEST_DATA_SIZE, NUM_PARAM)
-    
 
+    # Collect training data set from subdirectories
+    if (JOBTYPE == "collect_training" and MAKE_TRAINING_DIRS == True):
+        collect_training_dataset(INIT_DATA_SIZE, NUM_PARAM)
+        
     # Fit GP model and obtain optimized parameters from these results.
     if (JOBTYPE == "run_gpr" or JOBTYPE == "all"):
         var = [0.0] * NUM_PARAM
@@ -1106,7 +1284,7 @@ if __name__ == "__main__":
             for v in range(NUM_PARAM):
                 fmtstr = fmtstr+" %10.5f"
             
-            fmtstr = fmtstr+" %10.8f"
+            fmtstr = fmtstr+" %12.8f"
             # save old training and testing data files
             command_line("cp training.dat training.dat_prev")
             #command_line("cp testing.dat testing.dat_prev")
@@ -1122,7 +1300,7 @@ if __name__ == "__main__":
             print("Basis:")
             for i in range(NUM_PARAM):
                 print(" %10.5f" % var[i], end="")
-            print(" %10.8f\n" % result[0])
+            print(" %12.8f\n" % result[0])
         else:
             print("Need more points.\n")
 
