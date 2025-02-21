@@ -46,6 +46,9 @@ PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_ba
 #  all:              gen_training, gen_testing, (collect_training), run_gpr
 JOBTYPE = "run_gpr"
 
+# Minimization type: Global / Local
+MINTYPE = "global"
+
 # Build the surface, or just return parameters
 BUILD_SURFACE = True
 
@@ -1144,52 +1147,64 @@ def train_gp_and_return_opt(var, result):
     if (START_FROM_MIN):
         sg[0] = datamin
         
-    for j in range(nsearch):
-        
-        # Get lower/upper bounds for each parameter
-        bnds = get_param_bounds()
+    if (MINTYPE == "global"):
+        for j in range(nsearch):
+            # Get lower/upper bounds for each parameter
+            bnds = get_param_bounds()
+            minimizer = {"method": "SLSQP", "args":gp,"bounds":bnds}
+            res = basinhopping(gp_objfcn,X[sg[j],:],minimizer_kwargs=minimizer,niter=1000)
 
-        minimizer = {"method": "SLSQP", "args":gp,"bounds":bnds}
-        res = basinhopping(gp_objfcn,X[sg[j],:],minimizer_kwargs=minimizer,niter=1000)
-        for i in range(NUM_PARAM):
-            var_loc[NUM_PARAM*j+i] = res.x[i]
-            if (USE_XINV):
-                X[0,i] = np.divide(1,res.x[i])
-            else:
-                X[0,i] = res.x[i]
-                
+            for i in range(NUM_PARAM):
+                var_loc[NUM_PARAM*j+i] = res.x[i]
+                if (USE_XINV):
+                    X[0,i] = np.divide(1,res.x[i])
+                else:
+                    X[0,i] = res.x[i]
+
             out, sigma = gp_prediction(gp,X[0,:])
             res_loc[j]=out[0]
 
-    print(" Starting guesses:")
-    for j in range(nsearch):
-        print(" %10.8f" % Y[sg[j]], end="")
-    print("\n")
-    print(" Minima:")
-    for j in range(nsearch):
-        print(" %10.8f" % res_loc[j], end="")
-    print("\n")
-
-    # Find lowest minimum
-    min_val = 1000000.0
-    min_idx = 0
-    for j in range(nsearch):
-        if (res_loc[j] < min_val):
-            # if we are rejecting P(x) = 0.0 edge cases
-            if (NOEDGE_MINIMA and res_loc[j] <= 0.0001):
-                continue
+        print(" Starting guesses:")
+        for j in range(nsearch):
+            print(" %10.8f" % Y[sg[j]], end="")
+            print("\n")
+            print(" Minima:")
+        for j in range(nsearch):
+            print(" %10.8f" % res_loc[j], end="")
+            print("\n")
+                
+        # Find lowest minimum
+        min_val = 1000000.0
+        min_idx = 0
+        for j in range(nsearch):
+            if (res_loc[j] < min_val):
+                # if we are rejecting P(x) = 0.0 edge cases
+                if (NOEDGE_MINIMA and res_loc[j] <= 0.0001):
+                    continue
+                min_idx = j
+                min_val = res_loc[j]
             
-            min_idx = j
-            min_val = res_loc[j]
+        # Print this minimum
+        for i in range(NUM_PARAM):
+            print(" %10.5f" % var_loc[(NUM_PARAM * min_idx) + i])
+        print(" %15.8f" % res_loc[min_idx])
     
-    # Print this minimum
-    for i in range(NUM_PARAM):
-        print(" %10.5f" % var_loc[(NUM_PARAM * min_idx) + i])
-    print(" %15.8f" % res_loc[min_idx])
-    
-    # Return this minimum
-    var[0:NUM_PARAM] = var_loc[(NUM_PARAM * min_idx):(NUM_PARAM * min_idx) + NUM_PARAM]
-    result[0] = res_loc[min_idx] * YSCALE
+        # Return this minimum
+        var[0:NUM_PARAM] = var_loc[(NUM_PARAM * min_idx):(NUM_PARAM * min_idx) + NUM_PARAM]
+        result[0] = res_loc[min_idx] * YSCALE
+
+    else:
+        # Local search from minimum
+        bnds = get_param_bounds()
+        res = minimize(gp_objfcn,X[datamin,:],method="SLSQP",bounds=bnds,args=gp)
+        var[0:NUM_PARAM] = res.x
+        out, sigma = gp_prediction(gp, var)
+        result[0] = out[0]
+        # Print this minimum
+        for i in range(NUM_PARAM):
+            print(" %10.5f" % var[i])
+        print(" %15.8f" % result[0])
+        
         
     print("--- %s seconds ---" % (time.time() - start_time))
 
