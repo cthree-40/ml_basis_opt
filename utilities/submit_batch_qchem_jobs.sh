@@ -25,7 +25,7 @@ echo "OMP_SCHEDULE = $OMP_SCHEDULE"
 echo "Start directory: ${1}"
 echo "Final directory: ${2}"
 
-molec=("h2_0.74" "h_anion" "hehhe" "hcn" "hnc" "fhf")
+molec=("fhf_2.58" "fhf_2.62" "fhf_2.66" "fhf_2.70" "fhf_2.74" "h2_0.74" "h_anion" "hehhe" "hcn" "hnc" "fhf")
 
 for i in $( seq ${1} ${2} ); do
     cd $i
