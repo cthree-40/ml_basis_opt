@@ -3,9 +3,7 @@
 #SBATCH --out="slurm-%j.out"
 #SBATCH --time=1:00:00
 #SBATCH --nodes=1 --ntasks=1 --cpus-per-task=24
-#SBATCH --mem=150GB
-#SBATCH --partition=compute
-#SBATCH --account=uic317
+#SBATCH --constraint="intel&cascade"
 
 # Set necessary environmental variables
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
@@ -25,7 +23,7 @@ echo "OMP_SCHEDULE = $OMP_SCHEDULE"
 echo "Start directory: ${1}"
 echo "Final directory: ${2}"
 
-molec=("fhf_2.58" "fhf_2.62" "fhf_2.66" "fhf_2.70" "fhf_2.74" "h2_0.74" "h_anion" "hehhe" "hcn" "hnc" "fhf")
+molec=("hehhe_2.20" "hehhe_2.25" "hehhe_2.30" "hehhe_2.35" "hehhe_2.40" "fhf_2.58" "fhf_2.62" "fhf_2.66" "fhf_2.70" "fhf_2.74" "h2_0.74" "h_anion" "hehhe" "hcn" "hnc" "fhf")
 
 for i in $( seq ${1} ${2} ); do
     cd $i

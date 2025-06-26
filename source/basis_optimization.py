@@ -36,7 +36,7 @@ from scipy.optimize import minimize, rosen, rosen_der,shgo, differential_evoluti
 
 # This is the directory containing source/ and bin/ and utilities/ for this
 # program.
-PROGRAM_HOME = "/home/clm96/pi_project/software/basis_opt/malbon_optimizer/ml_basis_opt"
+PROGRAM_HOME = "/scratch/gpfs/SHS/cm4542/ml_basis_opt"
 
 # Jobtype for program execution
 #  gen_training:     Generate training input files for batch submission
@@ -223,7 +223,7 @@ def collect_training_dataset(data_size, num_param):
         for j in range(len(MOLEC_SYS)):
             # Change to the molecular system directory
             os.chdir(curr_dir+"/"+str(i)+"/"+MOLEC_SYS[j][0])
-            process_qchem_job(MOLEC_SYS[j][0], PENFCN_WEIGHTS, MOLEC_SYS[j][3])
+            process_qchem_job(MOLEC_SYS[j][0], PENFCN_WEIGHTS, MOLEC_SYS[j][2], MOLEC_SYS[j][3])
             # Copy processed files to data directory (where objective function is eval)
             command_line("cp "+MOLEC_SYS[j][0]+"* "+idata_dir)
         # Compute objective function
@@ -443,7 +443,7 @@ def generate_initial_dataset(init_data_size, num_param, run):
                 for j in range(len(MOLEC_SYS)):
                     command_line("mkdir "+str(i)+"/"+MOLEC_SYS[j][0])
                     command_line("mv "+MOLEC_SYS[j][0]+".input."+str(i)+" "+str(i)+"/"+MOLEC_SYS[j][0]+"/"+MOLEC_SYS[j][0]+".input")
-    
+
                     
     # If all we require is inputs, leave
     if not (run):
@@ -650,7 +650,10 @@ def objective_function_value_density(var):
         name = MOLEC_SYS[i][0]
         npts = MOLEC_SYS[i][1]
 
-        command_line(rmse_prog+" "+name+"_dens.data "+name+"_dens.fgh.data "+str(npts)+" > "+name+".rmse")
+        if (MOLEC_SYS[i][2] == 4):
+            rmse_prog = PROGRAM_HOME+"/bin/compute_rmse_density_3D.x"
+
+        command_line(rmse_prog+" "+name+"_dens.data "+name+"_dens.benchmark.data "+str(npts)+" > "+name+".rmse")
         rmse_file = open(name+".rmse", "r")
         rmse.append(float(rmse_file.read()))
         rmse_file.close()
@@ -764,14 +767,15 @@ def objective_function_value_groundstate(var):
 # Input:
 #  molec = molecular system
 #  wt = objective function weights
+#  cjobtype = cubedata job type 
 #  nstates = number of states
-def process_qchem_job(molec, wt, nstates):
+def process_qchem_job(molec, wt, cjobtype, nstates):
 
     # Get penalty function weights. This will inform what data
     # should be created.
     if (wt["density"] > 0.0):
         if (os.path.exists("./nbox_data.txt") and os.path.exists("./nbox_npts.txt")):
-            cdxz_prog = PROGRAM_HOME+"/bin/cubedata_into_training.data.x"
+            cdxz_prog = PROGRAM_HOME+"/bin/cubedata_into_training_data.x"
             command_line(cdxz_prog+" den_p_0.cube "+str(cjobtype)+" > "+molec+"_dens.data")
         else:
             print("Missing nbox files. Aborting!\n")
@@ -1151,7 +1155,7 @@ def train_gp_and_return_opt(var, result):
         for j in range(nsearch):
             # Get lower/upper bounds for each parameter
             bnds = get_param_bounds()
-            minimizer = {"method": "SLSQP", "args":gp,"bounds":bnds}
+            minimizer = {"method": "L-BFGS-B", "args":gp,"bounds":bnds}
             res = basinhopping(gp_objfcn,X[sg[j],:],minimizer_kwargs=minimizer,niter=1000)
 
             for i in range(NUM_PARAM):
@@ -1196,7 +1200,7 @@ def train_gp_and_return_opt(var, result):
     else:
         # Local search from minimum
         bnds = get_param_bounds()
-        res = minimize(gp_objfcn,X[datamin,:],method="SLSQP",bounds=bnds,args=gp)
+        res = minimize(gp_objfcn,X[datamin,:],method="L-BFGS-B",bounds=bnds,args=gp)
         var[0:NUM_PARAM] = res.x
         out, sigma = gp_prediction(gp, var)
         result[0] = out[0]
@@ -1272,7 +1276,7 @@ if __name__ == "__main__":
                 print("GP predicted minimum = %15.8f\n" % gpmin)
                 print("Computed minimum     = %15.8f\n" % result[0])
                 print("Difference           = %15.8f\n" % diff)
-                if ((abs(diff) < PF_TOL) and (gpmin < 100.0)):
+                if ((abs(diff) < PF_TOL)):
                     gpr_reliable = True
                     break
             else:
@@ -1316,6 +1320,31 @@ if __name__ == "__main__":
             for i in range(NUM_PARAM):
                 print(" %10.5f" % var[i], end="")
             print(" %12.8f\n" % result[0])
+
+            # Update training and testing data sets
+            f_training = "training.dat"
+            f_testing  = "testing.dat"
+            X = np.loadtxt(f_training, usecols=range(NUM_PARAM))
+            Y = np.loadtxt(f_training, usecols=(NUM_PARAM,))
+            n_points_data, n_parameters_data = X.shape
+            # Add new parameters and results
+            a = np.array([var])
+            X = np.concatenate((X, a), axis=0)
+            b = np.array([result[0]])
+            Y = np.concatenate((Y, b), axis=0)
+            data = np.column_stack((X,Y))
+            # Build format string
+            fmtstr = ""
+            for v in range(NUM_PARAM):
+                fmtstr = fmtstr+" %10.5f"
+            
+            fmtstr = fmtstr+" %12.8f"
+            # save old training and testing data files
+            command_line("cp training.dat training.dat_prev")
+            #command_line("cp testing.dat testing.dat_prev")
+            # save results
+            np.savetxt(f_training, data, fmt=fmtstr)
+            
         else:
             print("Need more points.\n")
 

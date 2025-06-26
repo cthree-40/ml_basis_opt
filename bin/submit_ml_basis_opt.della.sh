@@ -4,6 +4,7 @@
 #SBATCH --time=1:00:00
 #SBATCH --nodes=1 --ntasks=1 --cpus-per-task=24
 #SBATCH --mem=150GB
+#SBATCH --constraint="intel&cascade"
 
 # Set up environmental variables
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
