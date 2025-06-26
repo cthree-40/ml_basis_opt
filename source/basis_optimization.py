@@ -601,7 +601,7 @@ def objective_function_value_all_states(var):
             
             # Compute RMSE
             val = 0.0
-            for i in range(nsts):
+            for i in range(nst):
                 
                 diff = (states[i] - ref_st[i]) * 219474.63 # Convert to cm-1
                 
@@ -700,11 +700,17 @@ def objective_function_value_excited_states(var):
         # Read in reference excited states. Arrive converted to cm-1
         ref_xst = get_excited_states_from_file(name+"_states.benchmark.data", nxst)
 
+        # Read in specific state information. If none exist, the list is empty,
+        # and the default is to evaluate error of all excited states.
+        stlist = get_excited_state_list(name+"_excitedstates.data")
+        if (len(stlist) == 0):
+            stlist = list(range(nxst))
+
         # Compute RMSE
         val = 0.0
-        for i in range(nxst):
+        for i in range(len(stlist)):
             
-            diff = xstates[i] - ref_xst[i]
+            diff = xstates[stlist[i]] - ref_xst[stlist[i]]
             
             val = val + diff * diff
 
@@ -843,6 +849,25 @@ def get_all_states_from_file(flname, nsts):
     
     return states
 
+#
+# get_excited_state_list: Get list of states to compare for
+# excited state
+# Input:
+#  flname = File name containing state list
+# Outut:
+#  stlist = list of states to compare
+#
+def get_excited_state_list(flname):
+    stlist = []
+    if os.path.isfile(flname):
+        sfile = open(flname, "r")
+        sf_lines = (sfile.read().splitlines())
+        sfile.close()
+        nlines = len(sf_lines)
+        for i in range(0, nlines):
+            stlist.append(int(sf_lines[i]) - 1)
+
+    return stlist
 
 #
 # get_excited_states_from_file: Get excited state energies from
